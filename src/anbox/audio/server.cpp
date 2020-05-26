@@ -17,6 +17,7 @@
 
 #include "anbox/audio/server.h"
 #include "anbox/audio/sink.h"
+#include "anbox/audio/source.h"
 #include "anbox/network/published_socket_connector.h"
 #include "anbox/network/delegate_connection_creator.h"
 #include "anbox/network/local_socket_messenger.h"
@@ -25,6 +26,12 @@
 #include "anbox/system_configuration.h"
 #include "anbox/utils.h"
 #include "anbox/logger.h"
+
+#include<stdlib.h>
+#include<stdio.h>
+#include<alsa/asoundlib.h>
+#include<unistd.h>
+#include<thread>
 
 using namespace std::placeholders;
 
@@ -36,6 +43,9 @@ class AudioForwarder : public anbox::network::MessageProcessor {
   }
 
   bool process_data(const std::vector<std::uint8_t> &data) override {
+    std::thread::id tid = std::this_thread::get_id();
+    pid_t pid  = getpid();
+    DEBUG("audio sink forwarder is called,pid = %d ,tid = %d ", pid, tid);
     sink_->write_data(data);
     return true;
   }
@@ -43,6 +53,29 @@ class AudioForwarder : public anbox::network::MessageProcessor {
  private:
   std::shared_ptr<anbox::audio::Sink> sink_;
 };
+
+class AudioRecorderForwarder: public anbox::network::MessageProcessor {
+public:
+    AudioRecorderForwarder(const std::shared_ptr<anbox::audio::Source> &source):
+      source_(source){
+    }
+
+    bool process_data (const std::vector<std::uint8_t> &data) override
+    {
+        std::thread::id tid = std::this_thread::get_id();
+        pid_t pid  = getpid();
+        DEBUG("audio recorder forwarder is called ,pid = %d ,tid = %d ", pid, tid);
+        source_->read_data(data);
+        return true;
+    }
+
+    ~AudioRecorderForwarder()
+    {
+        source_.reset();
+    }
+private:
+    std::shared_ptr<anbox::audio::Source> source_;
+ };
 }
 
 namespace anbox {
@@ -78,12 +111,17 @@ void Server::create_connection_for(std::shared_ptr<boost::asio::basic_stream_soc
   }
 
   std::shared_ptr<network::MessageProcessor> processor;
+  std::shared_ptr<anbox::audio::Source>  mAudioSource;
 
   switch (client_info.type) {
   case ClientInfo::Type::Playback:
     processor = std::make_shared<AudioForwarder>(platform_->create_audio_sink());
+    DEBUG("create_connection for is called, audio type Playback");
     break;
   case ClientInfo::Type::Recording:
+    DEBUG("create_connection for is called, audio type Recording");
+    mAudioSource = platform_->create_audio_source();
+    processor = std::make_shared< AudioRecorderForwarder>(mAudioSource);
     break;
   default:
     ERROR("Invalid client type %d", static_cast<int>(client_info.type));
@@ -97,8 +135,11 @@ void Server::create_connection_for(std::shared_ptr<boost::asio::basic_stream_soc
 
   auto connection = std::make_shared<network::SocketConnection>(
         messenger, messenger, next_id(), connections_, processor);
+  if (client_info.type == ClientInfo::Type::Recording) {
+    mAudioSource->set_socket_connection(connection);
+    mAudioSource->connect_audio();
+  }
   connections_->add(connection);
-
   connection->read_next_message();
 }
 

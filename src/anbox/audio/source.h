@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Simon Fels <morphis@gravedo.de>
+ * Copyright (C) 2020
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3, as published
@@ -21,6 +21,7 @@
 #include <cstdint>
 
 #include <vector>
+#include"anbox/network/socket_connection.h"
 
 namespace anbox {
 namespace audio {
@@ -28,7 +29,9 @@ class Source {
  public:
   virtual ~Source() {}
 
-  virtual void read_data(std::vector<std::uint8_t> &data) = 0;
+  virtual void read_data (const std::vector<std::uint8_t> &data) = 0;
+  virtual void set_socket_connection (std::shared_ptr<network::SocketConnection> const& connection) = 0;
+  virtual bool connect_audio() = 0;
 };
 } // namespace audio
 } // namespace anbox

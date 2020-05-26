@@ -24,6 +24,8 @@
 #include "anbox/platform/sdl/keycode_converter.h"
 #include "anbox/platform/sdl/window.h"
 #include "anbox/platform/sdl/audio_sink.h"
+#include "anbox/platform/alsa/audio_source.h"
+
 #include "anbox/wm/manager.h"
 
 #include <boost/throw_exception.hpp>
@@ -500,8 +502,7 @@ std::shared_ptr<audio::Sink> Platform::create_audio_sink() {
 }
 
 std::shared_ptr<audio::Source> Platform::create_audio_source() {
-  ERROR("Not implemented");
-  return nullptr;
+  return std::make_shared<AudioSource>();
 }
 
 bool Platform::supports_multi_window() const {

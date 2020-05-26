@@ -27,6 +27,7 @@ include_directories(
   ${CMAKE_BINARY_DIR}/external/android-emugl/host/libs/renderControl_dec
   ${CMAKE_SOURCE_DIR}/external/glm
   ${CMAKE_SOURCE_DIR}/external/cpu_features/include
+  /usr/include/alsa/
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBINDERFS_PATH=\"\\\"${BINDERFS_PATH}\\\"\"")
@@ -57,7 +58,9 @@ add_library(anbox-protobuf
     anbox/protobuf/anbox_container.proto
     anbox/protobuf/google_protobuf_guard.cpp)
 target_link_libraries(anbox-protobuf
-    ${PROTOBUF_LITE_LIBRARIES})
+    ${PROTOBUF_LITE_LIBRARIES}
+    /usr/lib/aarch64-linux-gnu/libasound.so
+     )
 
 set(SOURCES
     anbox/android/intent.cpp
@@ -350,7 +353,12 @@ set(SOURCES
     anbox/runtime.cpp
     anbox/runtime.h
     anbox/system_configuration.cpp
-    anbox/system_configuration.h)
+    anbox/system_configuration.h
+    anbox/audio/alsa_helper.h
+    anbox/audio/alsa_helper.cpp
+    anbox/platform/alsa/audio_source.h
+    anbox/platform/alsa/audio_source.cpp
+    )
 
 add_library(anbox-core STATIC ${SOURCES})
 target_link_libraries(anbox-core

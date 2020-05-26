@@ -1,7 +1,8 @@
 /*
- * Copyright (C) 2017 Simon Fels <morphis@gravedo.de>
+ * Copyright (C) 2016 Simon Fels <morphis@gravedo.de>
  *
- * This program is free software: you can redistribute it and/or modify it
+ * This program is fre
+ * e software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3, as published
  * by the Free Software Foundation.
  *
@@ -15,27 +16,21 @@
  *
  */
 
-#ifndef ANBOX_AUDIO_CLIENT_INFO_H_
-#define ANBOX_AUDIO_CLIENT_INFO_H_
+#include "anbox/audio/alsa_helper.h"
+#include "anbox/platform/alsa/audio_source.h"
+#include "anbox/logger.h"
+#include <gtest/gtest.h>
 
-#include <cstdint>
+namespace anbox{
+namespace platform{
+namespace sdl{
+TEST (AudioSource, ConnectAudio) {
+    AudioSource source;
+    bool res = source.connect_audio();
+    EXPECT_EQ(true, res);
 
-namespace anbox {
-namespace audio {
-struct ClientInfo {
-  enum class Type : std::uint8_t {
-    Playback = 0,
-    Recording = 1,
-    Max = 2,
-  };
-  Type type;
-};
-enum class RecordCommand : std::uint8_t {
-  StartRecord = 1,
-  StopRecord,
-};
+}
 
-} // namespace audio
-} // namespace anbox
-
-#endif
+}
+}
+}
