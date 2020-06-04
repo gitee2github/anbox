@@ -251,6 +251,13 @@ void Platform::process_events() {
   }
 }
 
+void Platform::input_key_event(const SDL_Scancode &scan_code, std::int32_t down_or_up) {  // down_or_up: 1-down,0-up
+  std::vector<input::Event> keyboard_events;
+  std::uint16_t code = KeycodeConverter::convert(scan_code);
+  keyboard_events.push_back({EV_KEY, code, down_or_up});
+  keyboard_->send_events(keyboard_events);
+}
+
 void Platform::process_input_event(const SDL_Event &event) {
   std::vector<input::Event> mouse_events;
   std::vector<input::Event> keyboard_events;
