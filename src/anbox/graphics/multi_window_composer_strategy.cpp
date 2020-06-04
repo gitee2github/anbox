@@ -48,18 +48,30 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
   for (auto &w : win_layers) {
     const auto &renderables = w.second;
     RenderableList final_renderables;
-    auto new_window_frame = Rect::Invalid;
-    auto max_layer_area = -1;
+    int top = 1080;
+    int left = 1920;
 
     for (auto &r : renderables) {
-      const auto layer_area = r.screen_position().width() * r.screen_position().height();
       // We always prioritize layers which are lower in the list we got
       // from SurfaceFlinger as they are already ordered.
-      if (layer_area < max_layer_area)
-        continue;
+      int current_left = r.screen_position().left();
+      int current_top = r.screen_position().top();
+      int half_diff = 2;
+      if (r.screen_position().width() > w.first->frame().width()) {
+        auto diff = r.screen_position().width() - w.first->frame().width();
+        current_left += diff / half_diff;
+      }
+      if (r.screen_position().height() > w.first->frame().height()) {
+        auto diff = r.screen_position().height() - w.first->frame().height();
+        current_top += diff / half_diff;
+      }
 
-      max_layer_area = layer_area;
-      new_window_frame = r.screen_position();
+      if (current_left < left) {
+        left = current_left;
+      }
+      if (current_top < top) {
+        top = current_top;
+      }
     }
 
     for (auto &r : renderables) {
@@ -67,10 +79,10 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
       // need to recalculate all layer coordinates into relatives ones to the
       // window they are drawn into.
       auto rect = Rect{
-          r.screen_position().left() - new_window_frame.left() + r.crop().left(),
-          r.screen_position().top() - new_window_frame.top() + r.crop().top(),
-          r.screen_position().right() - new_window_frame.left() + r.crop().left(),
-          r.screen_position().bottom() - new_window_frame.top() + r.crop().top()};
+          r.screen_position().left() - left + r.crop().left(),
+          r.screen_position().top() - top + r.crop().top(),
+          r.screen_position().right() - left + r.crop().left(),
+          r.screen_position().bottom() - top + r.crop().top()};
 
       auto new_renderable = r;
       new_renderable.set_screen_position(rect);
