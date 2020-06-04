@@ -42,8 +42,8 @@ Platform::Platform(
     const Configuration &config)
     : input_manager_(input_manager),
       event_thread_running_(false),
+      ime_thread_running_(false),
       config_(config) {
-
   // Don't block the screensaver from kicking in. It will be blocked
   // by the desktop shell already and we don't have to do this again.
   // If we would leave this enabled it will prevent systems from
@@ -131,12 +131,20 @@ Platform::Platform(
       touch_slots[i] = -1;
 
   event_thread_ = std::thread(&Platform::process_events, this);
+  ime_thread_ = std::thread(&Platform::create_ime_socket, this);
 }
 
 Platform::~Platform() {
   if (event_thread_running_) {
     event_thread_running_ = false;
     event_thread_.join();
+  }
+  if (ime_thread_running_) {
+    ime_thread_running_ = false;
+    ime_thread_.join();
+  }
+  if (ime_socket_ != -1) {
+    close(ime_socket_);
   }
 }
 
@@ -148,8 +156,52 @@ void Platform::set_window_manager(const std::shared_ptr<wm::Manager> &window_man
   window_manager_ = window_manager;
 }
 
+// Added for Chinese input anbox begin
+void Platform::create_ime_socket() {
+  int ime_socket = -1;
+  int client_socket = -1;
+  int rc = -1;
+  int len = 0;
+  struct sockaddr_un socket_addr, client_addr;
+  memset(&socket_addr, 0, sizeof(socket_addr));
+  DEBUG("Starting create_ime_socket thread");
+  ime_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (ime_socket == -1) {
+    ERROR("Create ime socket failed");
+    return;
+  }
+  socket_addr.sun_family = AF_UNIX;
+  strcpy(socket_addr.sun_path, IME_SOCKET_PATH);
+  unlink(IME_SOCKET_PATH);
+  rc = bind(ime_socket, reinterpret_cast<struct sockaddr *>(&socket_addr), sizeof(socket_addr));
+  if (rc == -1) {
+    ERROR("bind ime socket failed");
+    close(ime_socket);
+    return;
+  }
+  rc = listen(ime_socket, 1);
+  if (rc == -1) {
+    ERROR("Listen ime socket failed");
+    close(ime_socket);
+    return;
+  }
+  DEBUG("Before ime socket accept");
+  client_socket = accept(ime_socket, reinterpret_cast<struct sockaddr*>(&client_addr), 
+      reinterpret_cast<socklen_t*>(&len));
+  if (client_socket == -1) {
+    ERROR("Accept ime socket failed");
+    close(ime_socket);
+    return;
+  }
+  ime_fd_ = client_socket;
+  ime_socket_ = ime_socket;
+  DEBUG("accept ime socket successful");
+}
+// Added for Chinese input anbox end
+
 void Platform::process_events() {
   event_thread_running_ = true;
+  int flag = 0;
 
   while (event_thread_running_) {
     SDL_Event event;
@@ -168,7 +220,12 @@ void Platform::process_events() {
           }
           break;
         case SDL_KEYDOWN:
+          flag = 1;
+          if (keyboard_)
+            process_input_event(event);
+          break;
         case SDL_KEYUP:
+          flag = 0;
           if (keyboard_)
             process_input_event(event);
           break;
@@ -181,11 +238,24 @@ void Platform::process_events() {
         case SDL_FINGERMOTION:
           process_input_event(event);
           break;
+        case SDL_TEXTINPUT:
+          WARNING("Input Event TEXT=%s TYPE=%d WINDOWID=%d", event.text.text, event.type, event.text.windowID);
+          if (flag == 0 && ime_fd_) {
+            send(ime_fd_, event.text.text, strlen(event.text.text), 0);
+          }
+          break;
         default:
           break;
       }
     }
   }
+}
+
+void Platform::input_key_event(const SDL_Scancode &scan_code, std::int32_t down_or_up) {  // down_or_up: 1-down,0-up
+  std::vector<input::Event> keyboard_events;
+  std::uint16_t code = KeycodeConverter::convert(scan_code);
+  keyboard_events.push_back({EV_KEY, code, down_or_up});
+  keyboard_->send_events(keyboard_events);
 }
 
 void Platform::process_input_event(const SDL_Event &event) {
@@ -274,8 +344,7 @@ void Platform::process_input_event(const SDL_Event &event) {
       push_finger_up(event.tfinger.fingerId, touch_events);
       break;
     }
-	case SDL_FINGERMOTION: {
-
+    case SDL_FINGERMOTION: {
       if (!calculate_touch_coordinates(event, x, y))
         break;
       push_finger_motion(x, y, event.tfinger.fingerId, touch_events);
@@ -286,7 +355,7 @@ void Platform::process_input_event(const SDL_Event &event) {
   }
 
   if (mouse_events.size() > 0) {
-    mouse_events.push_back({EV_SYN, SYN_REPORT, 0});      
+    mouse_events.push_back({EV_SYN, SYN_REPORT, 0});
     pointer_->send_events(mouse_events);
   }
 
@@ -298,52 +367,52 @@ void Platform::process_input_event(const SDL_Event &event) {
 }
 
 int Platform::find_touch_slot(int id){
-    for (int i = 0; i < MAX_FINGERS; i++) {
-        if (touch_slots[i] == id)
-          return i;
-    }
-    return -1;
+  for (int i = 0; i < MAX_FINGERS; i++) {
+    if (touch_slots[i] == id)
+      return i;
+  }
+  return -1;
 }
 
 void Platform::push_slot(std::vector<input::Event> &touch_events, int slot){
-    if (last_slot != slot) {
-        touch_events.push_back({EV_ABS, ABS_MT_SLOT, slot});
-        last_slot = slot;
-    }
+  if (last_slot != slot) {
+    touch_events.push_back({EV_ABS, ABS_MT_SLOT, slot});
+    last_slot = slot;
+  }
 }
 
 void Platform::push_finger_down(int x, int y, int finger_id, std::vector<input::Event> &touch_events){
-    int slot = find_touch_slot(-1);
-    if (slot == -1) {
-        DEBUG("no free slot!");
-        return;
-    }
-    touch_slots[slot] = finger_id;
-    push_slot(touch_events, slot);
-    touch_events.push_back({EV_ABS, ABS_MT_TRACKING_ID, static_cast<std::int32_t>(finger_id % MAX_TRACKING_ID + 1)});
-    touch_events.push_back({EV_ABS, ABS_MT_POSITION_X, x});
-    touch_events.push_back({EV_ABS, ABS_MT_POSITION_Y, y});
-    touch_events.push_back({EV_SYN, SYN_REPORT, 0});
+  int slot = find_touch_slot(-1);
+  if (slot == -1) {
+    DEBUG("no free slot!");
+    return;
+  }
+  touch_slots[slot] = finger_id;
+  push_slot(touch_events, slot);
+  touch_events.push_back({EV_ABS, ABS_MT_TRACKING_ID, static_cast<std::int32_t>(finger_id % MAX_TRACKING_ID + 1)});
+  touch_events.push_back({EV_ABS, ABS_MT_POSITION_X, x});
+  touch_events.push_back({EV_ABS, ABS_MT_POSITION_Y, y});
+  touch_events.push_back({EV_SYN, SYN_REPORT, 0});
 }
 
 void Platform::push_finger_up(int finger_id, std::vector<input::Event> &touch_events){
-    int slot = find_touch_slot(finger_id);
-    if (slot == -1) 
-      return;
-    push_slot(touch_events, slot);
-    touch_events.push_back({EV_ABS, ABS_MT_TRACKING_ID, -1});
-    touch_events.push_back({EV_SYN, SYN_REPORT, 0});
-    touch_slots[slot] = -1;
+  int slot = find_touch_slot(finger_id);
+  if (slot == -1)
+    return;
+  push_slot(touch_events, slot);
+  touch_events.push_back({EV_ABS, ABS_MT_TRACKING_ID, -1});
+  touch_events.push_back({EV_SYN, SYN_REPORT, 0});
+  touch_slots[slot] = -1;
 }
 
 void Platform::push_finger_motion(int x, int y, int finger_id, std::vector<input::Event> &touch_events){
-    int slot = find_touch_slot(finger_id);
-    if (slot == -1) 
-      return;
-    push_slot(touch_events, slot);
-    touch_events.push_back({EV_ABS, ABS_MT_POSITION_X, x});
-    touch_events.push_back({EV_ABS, ABS_MT_POSITION_Y, y});
-    touch_events.push_back({EV_SYN, SYN_REPORT, 0});
+  int slot = find_touch_slot(finger_id);
+  if (slot == -1)
+    return;
+  push_slot(touch_events, slot);
+  touch_events.push_back({EV_ABS, ABS_MT_POSITION_X, x});
+  touch_events.push_back({EV_ABS, ABS_MT_POSITION_Y, y});
+  touch_events.push_back({EV_SYN, SYN_REPORT, 0});
 }
 
 

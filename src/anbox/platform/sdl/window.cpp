@@ -21,17 +21,17 @@
 #include "anbox/logger.h"
 
 #include <boost/throw_exception.hpp>
+#include <SDL2/SDL_image.h>
 
 #if defined(MIR_SUPPORT)
 #include <mir_toolkit/mir_client_library.h>
 #endif
 
 namespace {
-constexpr const int window_resize_border{30};
-constexpr const int top_drag_area{50};
-constexpr const int button_size{32};
-constexpr const int button_margin{5};
-constexpr const int button_padding{4};
+constexpr const int window_resize_border{3};
+constexpr const int button_size{42};
+constexpr const int button_margin{0};
+constexpr const int button_padding{0};
 }
 
 namespace anbox {
@@ -49,6 +49,7 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
                bool resizable)
     : wm::Window(renderer, task, frame, title),
       id_(id),
+      lastClickTime(0),
       observer_(observer),
       native_display_(0),
       native_window_(0) {
@@ -105,6 +106,10 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
       BOOST_THROW_EXCEPTION(std::runtime_error("SDL subsystem not supported"));
   }
 
+  struct timeval now = (struct timeval) { 0 };
+  gettimeofday(&now, NULL);
+  lastClickTime = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+
   SDL_ShowWindow(window_);
 }
 
@@ -119,36 +124,92 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
   SDL_GetWindowSize(window, &w, &h);
 
   const auto border_size = graphics::dp_to_pixel(window_resize_border);
-  const auto top_drag_area_height = graphics::dp_to_pixel(top_drag_area);
-  const auto button_area_width = graphics::dp_to_pixel(button_size + button_padding * 2 + button_margin * 2);
+  // top and bottom, two margins
+  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
+  // left and right, two margins
+  const auto button_area_width = graphics::dp_to_pixel(button_size + (button_margin << 1));
+
+  SDL_HitTestResult result = SDL_HITTEST_NORMAL;
+
+  while (!(platform_window->GetWindowFlags() & SDL_WINDOW_MAXIMIZED)) {
+    if (pt->x < border_size && pt->y < border_size)
+      result = SDL_HITTEST_RESIZE_TOPLEFT;
+    else if (pt->x > window_resize_border && pt->x < w - border_size && pt->y < border_size)
+      result = SDL_HITTEST_RESIZE_TOP;
+    else if (pt->x > w - border_size && pt->y < border_size)
+      result = SDL_HITTEST_RESIZE_TOPRIGHT;
+    else if (pt->x > w - border_size && pt->y > border_size && pt->y < h - border_size)
+      result = SDL_HITTEST_RESIZE_RIGHT;
+    else if (pt->x > w - border_size && pt->y > h - border_size)
+      result = SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+    else if (pt->x < w - border_size && pt->x > border_size && pt->y > h - border_size)
+      result = SDL_HITTEST_RESIZE_BOTTOM;
+    else if (pt->x < border_size && pt->y > h - border_size)
+      result = SDL_HITTEST_RESIZE_BOTTOMLEFT;
+    else if (pt->x < border_size && pt->y < h - border_size && pt->y > border_size)
+      result = SDL_HITTEST_RESIZE_LEFT;
+    else
+      break;
+
+    return result;
+  }
 
   if (pt->y < top_drag_area_height) {
-    if (pt->x > w - button_area_width && pt->x < w) {
+    if (pt->x > 0 && pt->x < button_area_width) {
+      std::shared_ptr<anbox::platform::sdl::Window::Observer> observer_temp = platform_window->observer_;
+      if (observer_temp) {
+        observer_temp->input_key_event(SDL_SCANCODE_AC_BACK, 1);
+        observer_temp->input_key_event(SDL_SCANCODE_AC_BACK, 0);
+      }
+      result = SDL_HITTEST_NORMAL;
+    } else if (pt->x > w - button_area_width * button_close && 
+               pt->x < w - button_area_width * (button_close - 1)) {
       platform_window->close();
-      return SDL_HITTEST_NORMAL;
-    } else if (pt->x > w - button_area_width * 2 && pt->x < w - button_area_width) {
+      result = SDL_HITTEST_NORMAL;
+    } else if (pt->x > w - button_area_width * button_maximize && 
+               pt->x < w - button_area_width * (button_maximize - 1)) {
       platform_window->switch_window_state();
-      return SDL_HITTEST_NORMAL;
+      result = SDL_HITTEST_NORMAL;
+    } else if (pt->x > w - button_area_width * button_minimize && 
+               pt->x < w - button_area_width * (button_minimize - 1)) {
+      SDL_MinimizeWindow(platform_window->window_);
+      result = SDL_HITTEST_NORMAL;
+    } else if (platform_window->check_db_clicked(pt->x, pt->y)) {
+      platform_window->switch_window_state();
+      result = SDL_HITTEST_NORMAL;
+    } else {
+      result = SDL_HITTEST_DRAGGABLE;
     }
-    return SDL_HITTEST_DRAGGABLE;
-  } else if (pt->x < border_size && pt->y < border_size)
-      return SDL_HITTEST_RESIZE_TOPLEFT;
-  else if (pt->x > window_resize_border && pt->x < w - border_size && pt->y < border_size)
-      return SDL_HITTEST_RESIZE_TOP;
-  else if (pt->x > w - border_size && pt->y < border_size)
-      return SDL_HITTEST_RESIZE_TOPRIGHT;
-  else if (pt->x > w - border_size && pt->y > border_size && pt->y < h - border_size)
-      return SDL_HITTEST_RESIZE_RIGHT;
-  else if (pt->x > w - border_size && pt->y > h - border_size)
-      return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
-  else if (pt->x < w - border_size && pt->x > border_size && pt->y > h - border_size)
-      return SDL_HITTEST_RESIZE_BOTTOM;
-  else if (pt->x < border_size && pt->y > h - border_size)
-      return SDL_HITTEST_RESIZE_BOTTOMLEFT;
-  else if (pt->x < border_size && pt->y < h - border_size && pt->y > border_size)
-      return SDL_HITTEST_RESIZE_LEFT;
+    return result;
+  }
 
   return SDL_HITTEST_NORMAL;
+}
+
+bool Window::check_db_clicked(int x, int y) {
+  bool result = false;
+  int wnd_x = 0;
+  int wnd_y = 0;
+  SDL_GetWindowPosition(window_, &wnd_x, &wnd_y);
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  long long current_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+  if (x == last_point_x && y == last_point_y && 
+      wnd_x == last_wnd_x && wnd_y == last_wnd_y) {
+    if (current_time - lastClickTime <= timespan_db_click) {
+      lastClickTime = current_time - timespan_db_click;
+      result = true;
+    }
+  }
+  if (!result){
+    lastClickTime = current_time;
+  }
+
+  last_wnd_x = wnd_x;
+  last_wnd_y = wnd_y;
+  last_point_x = x;
+  last_point_y = y;
+  return result;
 }
 
 void Window::close() {
@@ -174,12 +235,14 @@ void Window::process_event(const SDL_Event &event) {
     // Not need to listen for SDL_WINDOWEVENT_RESIZED here as the
     // SDL_WINDOWEVENT_SIZE_CHANGED is always sent.
     case SDL_WINDOWEVENT_SIZE_CHANGED:
-      if (observer_)
+      if (observer_) {
         observer_->window_resized(id_, event.window.data1, event.window.data2);
+      }
       break;
     case SDL_WINDOWEVENT_MOVED:
-      if (observer_)
+      if (observer_) {
         observer_->window_moved(id_, event.window.data1, event.window.data2);
+      }
       break;
     case SDL_WINDOWEVENT_SHOWN:
       break;
