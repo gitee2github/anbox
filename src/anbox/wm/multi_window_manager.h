@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 
 namespace anbox {
 namespace application {
@@ -57,6 +58,8 @@ class MultiWindowManager : public Manager {
   std::shared_ptr<bridge::AndroidApiStub> android_api_stub_;
   std::shared_ptr<application::Database> app_db_;
   std::map<Task::Id, std::shared_ptr<Window>> windows_;
+
+  std::set<Task::Id> need_removed;
 };
 }  // namespace wm
 }  // namespace anbox
