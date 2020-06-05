@@ -105,8 +105,12 @@ static EGLint rcGetGLString(EGLenum name, void* buffer, EGLint bufferSize) {
     const char* str = nullptr;
     if (tInfo->currContext->isGL2())
       str = reinterpret_cast<const char*>(s_gles2.glGetString(name));
-    else
+    else {
       str = reinterpret_cast<const char*>(s_gles1.glGetString(name));
+      if ((long int)str == name) {
+        str = nullptr;
+      }
+    }
 
     if (str)
       result += str;
