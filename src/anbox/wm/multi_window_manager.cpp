@@ -62,6 +62,10 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
       continue;
     }
 
+    if (window.frame().width() == 0 || window.frame().height() == 0) {
+        continue;
+    }
+
     auto title = window.package_name();
     auto app = app_db_->find_by_package(window.package_name());
     if (app.valid())
@@ -88,6 +92,22 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
     w->second->update_state(u.second);
   }
 
+  // remove black window which appear after close sometimes
+  for (std::set<Task::Id>::iterator it = need_removed.begin(); it != need_removed.end();) {
+    auto w = windows_.find(*it);
+
+    if (w == windows_.end()) {
+      it = need_removed.erase(it);
+    } else if (task_updates.find(*it) == task_updates.end()) {
+      auto platform_window = w->second;
+      platform_window->release();
+      windows_.erase(w);
+      it = need_removed.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
   // As final step we process all windows we need to remove as they
   // got killed on the other side. We need to respect here that we
   // also get removals for windows which are part of a task which is
@@ -100,6 +120,8 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
       auto platform_window = w->second;
       platform_window->release();
       windows_.erase(w);
+    } else {
+      need_removed.insert(window.task());
     }
   }
 }
