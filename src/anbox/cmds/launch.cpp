@@ -18,7 +18,7 @@
 #include "anbox/cmds/launch.h"
 #include "anbox/dbus/stub/application_manager.h"
 #include "anbox/dbus/interface.h"
-#include "anbox/ui/splash_screen.h"
+#include "anbox/ui/message_box.h"
 #include "anbox/system_configuration.h"
 #include "anbox/logger.h"
 
@@ -177,30 +177,19 @@ anbox::cmds::Launch::Launch()
       bus_type = anbox::dbus::Bus::Type::System;
     auto bus = std::make_shared<anbox::dbus::Bus>(bus_type);
 
-    std::shared_ptr<ui::SplashScreen> ss;
+    std::shared_ptr<ui::MessageBox> mb;
     if (!bus->has_service_with_name(dbus::interface::Service::name())) {
-      DEBUG("Session manager is not yet running, trying to start it");
-
-      if (!launch_session_manager())
-        return EXIT_FAILURE;
-
       // Give us a splash screen as long as we're trying to connect
       // with the session manager so the user knows something is
       // happening after he started Anbox.
-      ss = std::make_shared<ui::SplashScreen>();
-    }
-
-    unsigned int n = 0;
-    while (n < max_dbus_service_wait_attempts) {
-      if (bus->has_service_with_name(dbus::interface::Service::name()))
-        break;
-
-      std::this_thread::sleep_for(dbus_service_wait_interval);
-      n++;
+      ERROR("Session manager is not yet running");
+      mb = std::make_shared<ui::MessageBox>();
+      mb->process_events();
+      return EXIT_FAILURE;
     }
 
     auto app_mgr = dbus::stub::ApplicationManager::create_for_bus(bus);
-    n = 0;
+    int n = 0;
     while (n < max_session_mgr_wait_attempts) {
       app_mgr->update_properties();
       if (app_mgr->ready().get())
@@ -217,7 +206,6 @@ anbox::cmds::Launch::Launch()
 
     // If we have a splash screen now is the time to drop it as we're
     // going to launch the real application now.
-    ss.reset();
 
     const auto success = try_launch_activity(app_mgr);
     return success ? EXIT_SUCCESS : EXIT_FAILURE;
