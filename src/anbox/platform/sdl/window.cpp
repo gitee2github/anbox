@@ -19,6 +19,7 @@
 #include "anbox/wm/window_state.h"
 #include "anbox/graphics/density.h"
 #include "anbox/logger.h"
+#include "anbox/system_configuration.h"
 
 #include <boost/throw_exception.hpp>
 #include <SDL2/SDL_image.h>
@@ -76,6 +77,11 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   if (utils::get_env_value("ANBOX_NO_SDL_WINDOW_HIT_TEST", "false") == "false")
     if (SDL_SetWindowHitTest(window_, &Window::on_window_hit, this) < 0)
       BOOST_THROW_EXCEPTION(std::runtime_error("Failed to register for window hit test"));
+
+  std::string strPath = SystemConfiguration::instance().resource_dir() + "/ui/kpandroid.png";
+
+  SDL_Surface *icon = IMG_Load(strPath.c_str());
+  SDL_SetWindowIcon(window_, icon);
 
   SDL_SysWMinfo info;
   SDL_VERSION(&info.version);

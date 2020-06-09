@@ -74,7 +74,7 @@ void LauncherStorage::add_or_update(const Database::Item &item) {
   if (utils::get_env_value("SNAP").length() > 0)
     exe_path = snap_exe_path;
 
-  std::string exec = utils::string_format("%s launch ", exe_path);
+  std::string exec = utils::string_format("%s-launch.sh ", exe_path);
 
   if (!item.launch_intent.action.empty())
     exec += utils::string_format("--action=%s ", item.launch_intent.action);

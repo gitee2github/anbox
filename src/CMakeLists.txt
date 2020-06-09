@@ -316,6 +316,8 @@ set(SOURCES
 
     anbox/ui/splash_screen.cpp
     anbox/ui/splash_screen.h
+    anbox/ui/message_box.cpp
+    anbox/ui/message_box.h
 
     anbox/utils/environment_file.cpp
     anbox/utils/environment_file.h
