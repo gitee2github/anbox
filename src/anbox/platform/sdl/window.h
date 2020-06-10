@@ -70,6 +70,8 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
 
   void process_event(const SDL_Event &event);
   bool check_min_state() {return SDL_GetWindowFlags(window_) & SDL_WINDOW_MINIMIZED;}
+ 
+  void update_state(const wm::WindowState::List &states) override;
 
   bool check_db_clicked(int x, int y);
   EGLNativeWindowType native_handle() const override;
@@ -82,6 +84,8 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   void close();
   void switch_window_state();
 
+  std::atomic<bool> initialized{false};
+  long long last_update_time{ 0 };
   Id id_;
   std::shared_ptr<Observer> observer_;
   EGLNativeDisplayType native_display_;

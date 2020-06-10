@@ -51,7 +51,7 @@ class Window {
   bool attach();
   void release();
 
-  void update_state(const WindowState::List &states);
+  virtual void update_state(const WindowState::List &states);
   void update_frame(const graphics::Rect &frame);
 
   virtual EGLNativeWindowType native_handle() const;

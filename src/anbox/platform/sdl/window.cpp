@@ -114,7 +114,8 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
 
   struct timeval now = (struct timeval) { 0 };
   gettimeofday(&now, NULL);
-  lastClickTime = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+  last_update_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+  lastClickTime = last_update_time;
 
   SDL_ShowWindow(window_);
 }
@@ -157,10 +158,19 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
     else
       break;
 
+    if (!platform_window->initialized.load()) {
+      INFO("window initialized by resize");
+      platform_window->initialized = true;
+    }
     return result;
   }
 
   if (pt->y < top_drag_area_height) {
+    if (!platform_window->initialized.load()) {
+      INFO("window initialized by click top");
+      platform_window->initialized = true;
+    }
+
     if (pt->x > 0 && pt->x < button_area_width) {
       std::shared_ptr<anbox::platform::sdl::Window::Observer> observer_temp = platform_window->observer_;
       if (observer_temp) {
@@ -270,6 +280,48 @@ EGLNativeWindowType Window::native_handle() const { return native_window_; }
 Window::Id Window::id() const { return id_; }
 
 std::uint32_t Window::window_id() const { return SDL_GetWindowID(window_); }
+
+void Window::update_state(const wm::WindowState::List &states) {
+  if (!initialized.load() && !states.empty()) {
+    int w = 0;
+    int h = 0;
+    int x = 0;
+    int y = 0;
+    SDL_GetWindowSize(window_, &w, &h);
+    SDL_GetWindowPosition(window_, &x, &y);
+
+    graphics::Rect rect;
+    int area = w * h;
+    for (auto ws : states)
+    {
+      int temp = ws.frame().width() * ws.frame().height();
+      if (temp >= area) {
+        rect = ws.frame();
+      }
+    }
+
+    if (w == rect.width() &&
+        h == rect.height() &&
+        x == rect.left() &&
+        y == rect.top()) {
+      return;
+    }
+
+    struct timeval now = (struct timeval) { 0 };
+    gettimeofday(&now, NULL);
+    long long current_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+    if (current_time - last_update_time >= APP_START_MAX_TIME) {
+      INFO("window initialized by timeout");
+      initialized = true;
+      return;
+    }
+
+    last_update_time = current_time;
+    SDL_SetWindowSize(window_, rect.width(), rect.height());
+    SDL_SetWindowPosition(window_, rect.left(), rect.top());
+    update_frame(rect);
+  }
+}
 } // namespace sdl
 } // namespace platform
 } // namespace anbox
