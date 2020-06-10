@@ -78,7 +78,7 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
     if (SDL_SetWindowHitTest(window_, &Window::on_window_hit, this) < 0)
       BOOST_THROW_EXCEPTION(std::runtime_error("Failed to register for window hit test"));
 
-  std::string strPath = SystemConfiguration::instance().resource_dir() + "/ui/kpandroid.png";
+  std::string strPath = SystemConfiguration::instance().resource_dir() + "/ui/logo.png";
 
   SDL_Surface *icon = IMG_Load(strPath.c_str());
   SDL_SetWindowIcon(window_, icon);

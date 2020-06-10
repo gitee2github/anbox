@@ -152,7 +152,7 @@ if (SNAP_CONFINEMENT)
 endif()
 
 install(FILES data/ui/loading-screen.png DESTINATION ${ANBOX_RESOURCE_DIR}/ui)
-install(FILES data/ui/kpandroid.png DESTINATION ${ANBOX_RESOURCE_DIR}/ui)
+install(FILES data/ui/logo.png DESTINATION ${ANBOX_RESOURCE_DIR}/ui)
 install(PROGRAMS scripts/anbox-bridge.sh DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(PROGRAMS scripts/anbox-launch.sh DESTINATION ${CMAKE_INSTALL_BINDIR})
 
