@@ -26,8 +26,8 @@
     <unavailable-feature name="android.hardware.usb.accessory" />
     <unavailable-feature name="android.hardware.usb.host" />
     <unavailable-feature name="android.hardware.wifi" />
-    <unavailable-feature name="android.hardware.bluetooth" />
-    <unavailable-feature name="android.hardware.bluetooth_le" />
+    <feature name="android.hardware.bluetooth" />
+    <feature name="android.hardware.bluetooth_le" />
     <unavailable-feature name="android.hardware.sensor.compass" />
     <unavailable-feature name="android.hardware.sensor.accelerometer" />
 </permissions>

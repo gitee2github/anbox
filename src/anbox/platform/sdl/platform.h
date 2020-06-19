@@ -96,7 +96,6 @@ class Platform : public std::enable_shared_from_this<Platform>,
   std::thread event_thread_;
   std::thread ime_thread_;
   bool event_thread_running_;
-  bool ime_thread_running_;
   std::shared_ptr<input::Device> pointer_;
   std::shared_ptr<input::Device> keyboard_;
   std::shared_ptr<input::Device> touch_;

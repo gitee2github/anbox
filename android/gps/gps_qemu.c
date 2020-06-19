@@ -29,925 +29,1143 @@
 #include <sys/epoll.h>
 #include <math.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-#define  LOG_TAG  "gps_qemu"
-#include <cutils/log.h>
+#define  LOG_TAG  "gps_mock"
+//#include <cutils/log.h>
+#include <log/log.h>
 #include <cutils/sockets.h>
 #include <hardware/gps.h>
-#include <hardware/qemud.h>
 
-/* the name of the qemud-controlled socket */
-#define  QEMU_CHANNEL_NAME  "gps"
-
-#define  GPS_DEBUG  0
+#define GPS_DEBUG 0
 
 #if GPS_DEBUG
-#  define  D(...)   ALOGD(__VA_ARGS__)
+#define DLOG(...)   ALOGD(__VA_ARGS__)
 #else
-#  define  D(...)   ((void)0)
+#define DLOG(...)   ((void)0)
 #endif
 
-/*****************************************************************/
-/*****************************************************************/
-/*****                                                       *****/
-/*****       N M E A   T O K E N I Z E R                     *****/
-/*****                                                       *****/
-/*****************************************************************/
-/*****************************************************************/
+#define GPSFifoName     "/data/gps/fifo"
 
-typedef struct {
-    const char*  p;
-    const char*  end;
-} Token;
-
-#define  MAX_NMEA_TOKENS  16
-
-typedef struct {
-    int     count;
-    Token   tokens[ MAX_NMEA_TOKENS ];
-} NmeaTokenizer;
-
-static int
-nmea_tokenizer_init( NmeaTokenizer*  t, const char*  p, const char*  end )
-{
-    int    count = 0;
-    char*  q;
-
-    // the initial '$' is optional
-    if (p < end && p[0] == '$')
-        p += 1;
-
-    // remove trailing newline
-    if (end > p && end[-1] == '\n') {
-        end -= 1;
-        if (end > p && end[-1] == '\r')
-            end -= 1;
-    }
-
-    // get rid of checksum at the end of the sentecne
-    if (end >= p+3 && end[-3] == '*') {
-        end -= 3;
-    }
-
-    while (p < end) {
-        const char*  q = p;
-
-        q = memchr(p, ',', end-p);
-        if (q == NULL)
-            q = end;
-
-        if (count < MAX_NMEA_TOKENS) {
-            t->tokens[count].p   = p;
-            t->tokens[count].end = q;
-            count += 1;
-        }
-        if (q < end)
-            q += 1;
-
-        p = q;
-    }
-
-    t->count = count;
-    return count;
-}
-
-static Token
-nmea_tokenizer_get( NmeaTokenizer*  t, int  index )
-{
-    Token  tok;
-    static const char*  dummy = "";
-
-    if (index < 0 || index >= t->count) {
-        tok.p = tok.end = dummy;
-    } else
-        tok = t->tokens[index];
-
-    return tok;
-}
-
-
-static int
-str2int( const char*  p, const char*  end )
-{
-    int   result = 0;
-    int   len    = end - p;
-
-    for ( ; len > 0; len--, p++ )
-    {
-        int  c;
-
-        if (p >= end)
-            goto Fail;
-
-        c = *p - '0';
-        if ((unsigned)c >= 10)
-            goto Fail;
-
-        result = result*10 + c;
-    }
-    return  result;
-
-Fail:
-    return -1;
-}
-
-static double
-str2float( const char*  p, const char*  end )
-{
-    int   result = 0;
-    int   len    = end - p;
-    char  temp[16];
-
-    if (len >= (int)sizeof(temp))
-        return 0.;
-
-    memcpy( temp, p, len );
-    temp[len] = 0;
-    return strtod( temp, NULL );
-}
-
-/*****************************************************************/
-/*****************************************************************/
-/*****                                                       *****/
-/*****       N M E A   P A R S E R                           *****/
-/*****                                                       *****/
-/*****************************************************************/
-/*****************************************************************/
+enum {
+    CMD_QUIT = 0,
+    CMD_START = 1,
+    CMD_STOP = 2
+};
 
 #define  NMEA_MAX_SIZE  83
 
+#define autoUpdateCountMax  10
+
 typedef struct {
-    int     pos;
-    int     overflow;
-    int     utc_year;
-    int     utc_mon;
-    int     utc_day;
-    int     utc_diff;
-    GpsLocation  fix;
-    gps_location_callback  callback;
-    char    in[ NMEA_MAX_SIZE+1 ];
+    int pos;
+    int overflow;
+    int utc_year;
+    int utc_mon;
+    int utc_day;
+    int utc_diff;
+    GpsLocation fix;
+    gps_location_callback callback;
+    gps_status_callback status_cb;
+    gps_request_utc_time request_utc_time_cb;
+    gps_sv_status_callback sv_status_cb;
+    gps_nmea_callback nmea_cb;
+    gps_xtra_download_request download_request_cb;
+    agps_status_callback agps_status_cb;
+    gps_ni_notify_callback notify_cb;
+    agps_ril_request_set_id request_setid;
+    agps_ril_request_ref_loc request_refloc;
+    gps_geofence_transition_callback geofence_transition_callback;
+    gps_geofence_status_callback geofence_status_callback;
+    gps_measurement_callback measurement_callback;
+    gnss_measurement_callback gnss_measurement_callback;
+    char in[NMEA_MAX_SIZE + 1];
 } NmeaReader;
 
+typedef struct {
+    int init;
+    GpsCallbacks callbacks;
+    GpsXtraCallbacks xtracallbacks;
+    AGpsCallbacks agpscallbacks;
+    GpsNiCallbacks nicallbacks;
+    AGpsRilCallbacks rilcallbacks;
+    GpsGeofenceCallbacks geocallbacks;
+    GpsMeasurementCallbacks measurecallbacks;
+    pthread_t thread1;
+    pthread_t thread2;
+    int started;
+} GpsState;
 
-static void
-nmea_reader_update_utc_diff( NmeaReader*  r )
-{
-    time_t         now = time(NULL);
-    struct tm      tm_local;
-    struct tm      tm_utc;
-    long           time_local, time_utc;
+typedef struct _GpsSvLink {
+    char *gpsSvString;
+    struct _GpsSvLink *next;
+} GpsSvLink;
 
-    gmtime_r( &now, &tm_utc );
-    localtime_r( &now, &tm_local );
+static char autoUpdate = 0;
+static long system_time_diff = 0;
+static GpsState _gps_state[1];
+static NmeaReader pReader[1];
+static GpsLocation gpsData = {sizeof(GpsLocation), 0, 30.495864, 114.535703, 51, 0, 30, 10, 0};
+static GpsSvLink *pGpsSvInfo = NULL;
+static char lastLocation[80] = {"longitude=114.535703:latitude=30.495864:altitude=51:utc=20170317102530"};
+static const char *const GpsSvInfoInit[] = {
+//PRN SNR ELEVATION AZIMUTH
+        "01 33 45 140",
+        "10 39 80 125",
+        "12 17 30 062",
+        "14 24 45 305",
+        "18 36 40 136",
+        "24 14 10 046",
+        "25 31 40 106",
+        "31 34 50 235",
+        "32 30 60 340",
+        NULL
+};
+static const char *const GpsStatusString[] = {
+        "GPS_STATUS_NONE",
+        "GPS_STATUS_SESSION_BEGIN",
+        "GPS_STATUS_SESSION_END",
+        "GPS_STATUS_ENGINE_ON",
+        "GPS_STATUS_ENGINE_OFF",
+        NULL
+};
+static const char *const AGpsTypeString[] = {
+        "UNUSED",
+        "AGPS_TYPE_SUPL",
+        "AGPS_TYPE_C2K",
+        NULL
+};
+static const char *const AGpsStatusString[] = {
+        "UNUSED",
+        "GPS_REQUEST_AGPS_DATA_CONN",
+        "GPS_RELEASE_AGPS_DATA_CONN",
+        "GPS_AGPS_DATA_CONNECTED",
+        "GPS_AGPS_DATA_CONN_DONE",
+        "GPS_AGPS_DATA_CONN_FAILED",
+        NULL
+};
 
-    time_local = tm_local.tm_sec +
-                 60*(tm_local.tm_min +
-                 60*(tm_local.tm_hour +
-                 24*(tm_local.tm_yday +
-                 365*tm_local.tm_year)));
-
-    time_utc = tm_utc.tm_sec +
-               60*(tm_utc.tm_min +
-               60*(tm_utc.tm_hour +
-               24*(tm_utc.tm_yday +
-               365*tm_utc.tm_year)));
-
-    r->utc_diff = time_utc - time_local;
+static void gps_state_send(char command) {
+    int len;
+    int fifo_fd = -1;
+    char cmd[20];
+    switch (command) {
+        case CMD_START:
+            strcpy(cmd, "CMD_START");
+            break;
+        case CMD_STOP:
+            strcpy(cmd, "CMD_STOP");
+            break;
+        case CMD_QUIT:
+            strcpy(cmd, "CMD_QUIT");
+            break;
+        default:
+            ALOGE("%s: unknow command = %d", __FUNCTION__, command);
+            return;
+    }
+    DLOG("%s: command = %s", __FUNCTION__, cmd);
+    if ((fifo_fd = open(GPSFifoName, O_WRONLY)) < 0) {
+        ALOGE("open fifo \"%s\" (write) fail, error = %s\n", GPSFifoName, strerror(errno));
+        return;
+    }
+    len = strlen(cmd);
+    if (write(fifo_fd, cmd, len) != len) {
+        ALOGE("%s: write \"%s\" to \"%s\" fail: %s", __FUNCTION__, cmd, GPSFifoName, strerror(errno));
+    }
+    close(fifo_fd);
 }
 
+static void freepGpsSvInfo() {
+    GpsSvLink *tempLink;
+    while (pGpsSvInfo != NULL) {
+        tempLink = pGpsSvInfo;
+        pGpsSvInfo = pGpsSvInfo->next;
+        if (tempLink->gpsSvString != NULL) {
+            free(tempLink->gpsSvString);
+        }
+        free(tempLink);
+    }
+}
 
-static void
-nmea_reader_init( NmeaReader*  r )
-{
-    memset( r, 0, sizeof(*r) );
+static void gps_state_done(GpsState *s) {
+    void *dummy;
 
-    r->pos      = 0;
+    DLOG("%s, Enter", __FUNCTION__);
+    if (s->thread1) {
+        gps_state_send(CMD_QUIT);
+        pthread_join(s->thread1, &dummy);
+    }
+    freepGpsSvInfo();
+    s->init = 0;
+    if (s->thread2) {
+        pthread_join(s->thread2, &dummy);
+    }
+    DLOG("%s, Exit", __FUNCTION__);
+}
+
+static long getLocalTime(time_t *now) {
+    struct tm tm_local;
+    long local;
+
+    localtime_r(now, &tm_local);
+
+    local = tm_local.tm_sec +
+            60 * (tm_local.tm_min +
+                  60 * (tm_local.tm_hour +
+                        24 * (tm_local.tm_yday +
+                              365 * tm_local.tm_year)));
+    return local;
+}
+
+static long getUTCTime(time_t *now) {
+    struct tm tm_utc;
+    long utc;
+
+    gmtime_r(now, &tm_utc);
+
+    utc = tm_utc.tm_sec +
+          60 * (tm_utc.tm_min +
+                60 * (tm_utc.tm_hour +
+                      24 * (tm_utc.tm_yday +
+                            365 * tm_utc.tm_year)));
+    return utc;
+}
+
+static void nmea_reader_update_utc_diff(NmeaReader *r) {
+    time_t now = time(NULL);
+    r->utc_diff = getUTCTime(&now) - getLocalTime(&now);
+}
+
+static void nmea_reader_init(NmeaReader *r) {
+    memset(r, 0, sizeof(*r));
+
+    r->pos = 0;
     r->overflow = 0;
     r->utc_year = -1;
-    r->utc_mon  = -1;
-    r->utc_day  = -1;
+    r->utc_mon = -1;
+    r->utc_day = -1;
     r->callback = NULL;
+    r->status_cb = NULL;
+    r->request_utc_time_cb = NULL;
+    r->sv_status_cb = NULL;
+    r->nmea_cb = NULL;
+    r->download_request_cb = NULL;
+    r->agps_status_cb = NULL;
+    r->notify_cb = NULL;
+    r->request_setid = NULL;
+    r->request_refloc = NULL;
+    r->geofence_transition_callback = NULL;
+    r->geofence_status_callback = NULL;
+    r->measurement_callback = NULL;
+    r->gnss_measurement_callback = NULL;
     r->fix.size = sizeof(r->fix);
 
-    nmea_reader_update_utc_diff( r );
+    nmea_reader_update_utc_diff(r);
 }
 
-
-static void
-nmea_reader_set_callback( NmeaReader*  r, gps_location_callback  cb )
-{
+static void nmea_reader_set_callback(NmeaReader *r, gps_location_callback cb) {
     r->callback = cb;
     if (cb != NULL && r->fix.flags != 0) {
-        D("%s: sending latest fix to new callback", __FUNCTION__);
-        r->callback( &r->fix );
+        r->callback(&r->fix);
         r->fix.flags = 0;
     }
 }
 
+//定界符判断
+static bool is_delimeter_ch(char ch) {
+    return (' ' == ch) || ('\t' == ch) || (':' == ch);
+}
 
-static int
-nmea_reader_update_time( NmeaReader*  r, Token  tok )
-{
-    int        hour, minute;
-    double     seconds;
-    struct tm  tm;
-    time_t     fix_time;
+static bool end_of_string(char ch) {
+    return ('\0' == ch) || ('\r' == ch) || ('\n' == ch);
+}
 
-    if (tok.p + 6 > tok.end)
+static char *get_str_begin(char *cmd_buf) {
+    if (NULL == cmd_buf) {
+        return NULL;
+    }
+    while (is_delimeter_ch(*cmd_buf)) {
+        cmd_buf++;
+    }
+    if (end_of_string(*cmd_buf)) {
+        return NULL;
+    }
+    return cmd_buf;
+}
+
+static char *get_str_end(char *cmd_buf) {
+    if (NULL == cmd_buf) {
+        return NULL;
+    }
+    while (!is_delimeter_ch(*cmd_buf) && !end_of_string(*cmd_buf)) {
+        cmd_buf++;
+    }
+    return cmd_buf;
+}
+
+static int str2int(char *start, char *end) {
+    int result = 0;
+    char *p1 = start;
+    char *p2 = end;
+
+    if (p1 == NULL) {
         return -1;
+    }
+    while (*p1 < '0' || *p1 > '9') {
+        p1++;
+    }
+    if (p2 == NULL || p2 <= p1) {
+        p2 = p1;
+        while (*p2 >= '0' && *p2 <= '9') {
+            p2++;
+        }
+    }
+    while (p1 < p2) {
+        if (*p1 < '0' || *p1 > '9') {
+            return -1;
+        }
+        result = result * 10 + *p1 - '0';
+        p1++;
+    }
+    return result;
+}
 
-    if (r->utc_year < 0) {
-        // no date yet, get current one
-        time_t  now = time(NULL);
-        gmtime_r( &now, &tm );
-        r->utc_year = tm.tm_year + 1900;
-        r->utc_mon  = tm.tm_mon + 1;
-        r->utc_day  = tm.tm_mday;
+static float str2float(char *start, char *end) {
+    float result = 0;
+    char *p1 = start;
+    char *p2 = end;
+    char dotflag = 0;
+    int dotfactor = 1;
+
+    if (p1 == NULL) {
+        return -1;
+    }
+    while (*p1 < '0' || *p1 > '9') {
+        p1++;
+    }
+    if (p2 == NULL || p2 <= p1) {
+        p2 = p1;
+        while ((*p2 >= '0' && *p2 <= '9') || *p2 == '.') {
+            p2++;
+        }
+    }
+    while (p1 < p2) {
+        if (*p1 == '.') {
+            if (dotflag == 0) {
+                dotflag = 1;
+            } else {
+                return -1;
+            }
+        } else {
+            if (*p1 < '0' || *p1 > '9') {
+                return -1;
+            }
+            result = result * 10 + *p1 - '0';
+            if (dotflag == 1) {
+                dotfactor = dotfactor * 10;
+            }
+        }
+        p1++;
+    }
+    result = result / dotfactor;
+    return result;
+}
+
+static bool getSvStatus(GpsSvStatus *status) {
+    GpsSvLink *tempLink;
+    char *p;
+    int count = 0;
+
+    if (pGpsSvInfo == NULL) {
+        ALOGE("%s: pGpsSvInfo = NULL", __FUNCTION__);
+        return false;
     }
 
-    hour    = str2int(tok.p,   tok.p+2);
-    minute  = str2int(tok.p+2, tok.p+4);
-    seconds = str2float(tok.p+4, tok.end);
+    status->ephemeris_mask = 0ul;
+    status->almanac_mask = 0ul;
+    status->used_in_fix_mask = 0ul;
 
-    tm.tm_hour  = hour;
-    tm.tm_min   = minute;
-    tm.tm_sec   = (int) seconds;
-    tm.tm_year  = r->utc_year - 1900;
-    tm.tm_mon   = r->utc_mon - 1;
-    tm.tm_mday  = r->utc_day;
-    tm.tm_isdst = -1;
+    tempLink = pGpsSvInfo;
+    while (tempLink != NULL) {
+        p = get_str_begin(tempLink->gpsSvString);
+        status->sv_list[count].prn = str2int(p, NULL);
+        p = get_str_end(p);
+        p = get_str_begin(p);
+        status->sv_list[count].snr = str2float(p, NULL);
+        p = get_str_end(p);
+        p = get_str_begin(p);
+        status->sv_list[count].elevation = str2float(p, NULL);
+        p = get_str_end(p);
+        p = get_str_begin(p);
+        status->sv_list[count].azimuth = str2float(p, NULL);
+        if (status->sv_list[count].prn == -1 || status->sv_list[count].snr == -1 ||
+            status->sv_list[count].elevation == -1 || status->sv_list[count].azimuth == -1) {
+            ALOGE("%s: pGpsSvInfo format error: %s", __FUNCTION__, tempLink->gpsSvString);
+        } else {
+            DLOG("%s[%d]: prn = %d, snr = %.6f, elevation = %.6f, azimuth = %.6f", __FUNCTION__, count,
+                 status->sv_list[count].prn, status->sv_list[count].snr, status->sv_list[count].elevation,
+                 status->sv_list[count].azimuth);
+            status->ephemeris_mask |= 1ul << (status->sv_list[count].prn - 1);
+            status->almanac_mask |= 1ul << (status->sv_list[count].prn - 1);
+            if (status->sv_list[count].snr >= 30) {
+                status->used_in_fix_mask |= 1ul << (status->sv_list[count].prn - 1);
+            }
+            count++;
+        }
+        tempLink = tempLink->next;
+    }
+    status->size = sizeof(GpsSvStatus);
+    status->num_svs = count;
+    return true;
+}
 
-    fix_time = mktime( &tm ) + r->utc_diff;
-    r->fix.timestamp = (long long)fix_time * 1000;
+static bool strStartsWith(const char *buffer, const char *buff) {
+    int i = 0;
+    while (buff[i] != '\0') {
+        if (buffer[i] != buff[i]) {
+            return false;
+        }
+        i++;
+    }
+    return true;
+}
+
+static bool setGpsSvInfo(const char *const info[]) {
+    int i = 0;
+    GpsSvLink *lastLink = NULL;
+    GpsSvLink *tempLink;
+
+    freepGpsSvInfo();
+
+    while (info[i] != NULL) {
+        if ((tempLink = (GpsSvLink *) malloc(sizeof(GpsSvLink))) == NULL) {
+            ALOGE("malloc tempLink fail, error = %s\n", strerror(errno));
+            goto Fail3;
+        }
+        if ((tempLink->gpsSvString = (char *) malloc(strlen(info[i]) + 1)) == NULL) {
+            ALOGE("malloc tempLink->gpsSvString fail, error = %s\n", strerror(errno));
+            goto Fail3;
+        }
+        strcpy(tempLink->gpsSvString, info[i]);
+        tempLink->next = NULL;
+        if (lastLink == NULL) {
+            lastLink = tempLink;
+            if (pGpsSvInfo == NULL) {
+                pGpsSvInfo = tempLink;
+            }
+        } else {
+            lastLink->next = tempLink;
+            lastLink = tempLink;
+        }
+        i++;
+    }
+    return true;
+    Fail3:
+    freepGpsSvInfo();
+    return false;
+}
+
+static void parse_gps_cmd(const char *const cmd, NmeaReader *reader) {
+    char *p1 = NULL;
+    char *p2 = NULL;
+    char *pCommand = NULL;
+    AGpsStatus astatus;
+    char aGpsUpdate = 0;
+    time_t now = time(NULL);
+    char svUpdate = 0;
+
+    asprintf(&pCommand, "%s", cmd);
+    p1 = pCommand;
+
+    DLOG("%s: %s", __FUNCTION__, p1);
+
+    astatus.size = sizeof(AGpsStatus);
+
+    gpsData.flags = 0;
+    gpsData.accuracy = 10;
+    gpsData.flags = GPS_LOCATION_HAS_ACCURACY;
+
+    gpsData.timestamp = (long long) (now + system_time_diff) * 1000;
+
+    while (p1 != NULL) {
+        p2 = p1;
+        if ((p1 = strchr(p1, ':')) != NULL) {
+            *p1 = '\0';
+            p1++;
+        }
+        DLOG("%s: parse arg -> %s", __FUNCTION__, p2);
+        if (strStartsWith(p2, "longitude=")) {
+            p2 += strlen("longitude=");
+            gpsData.longitude = atof(p2);
+            gpsData.flags |= GPS_LOCATION_HAS_LAT_LONG;
+        } else if (strStartsWith(p2, "latitude=")) {
+            p2 += strlen("latitude=");
+            gpsData.latitude = atof(p2);
+            gpsData.flags |= GPS_LOCATION_HAS_LAT_LONG;
+        } else if (strStartsWith(p2, "altitude=")) {
+            p2 += strlen("altitude=");
+            gpsData.altitude = atof(p2);
+            gpsData.flags |= GPS_LOCATION_HAS_ALTITUDE;
+        } else if (strStartsWith(p2, "speed=")) {
+            p2 += strlen("speed=");
+            gpsData.speed = atof(p2);
+            gpsData.flags |= GPS_LOCATION_HAS_SPEED;
+        } else if (strStartsWith(p2, "bearing=")) {
+            p2 += strlen("bearing=");
+            gpsData.bearing = atof(p2);
+            gpsData.flags |= GPS_LOCATION_HAS_BEARING;
+        } else if (strStartsWith(p2, "utc=")) {
+            struct tm tm;
+            time_t fix_time;
+            p2 += strlen("utc=");
+            if (strlen(p2) >= 14) {
+                tm.tm_year = str2int(p2, p2 + 4) - 1900;
+                tm.tm_mon = str2int(p2 + 4, p2 + 6) - 1;
+                tm.tm_mday = str2int(p2 + 6, p2 + 8);
+                tm.tm_hour = str2int(p2 + 8, p2 + 10);
+                tm.tm_min = str2int(p2 + 10, p2 + 12);
+                tm.tm_sec = str2int(p2 + 12, p2 + 14);
+                tm.tm_isdst = -1;
+                fix_time = mktime(&tm);
+                system_time_diff = fix_time - now;
+                gpsData.timestamp = (long long) fix_time * 1000;
+                gpsData.flags |= GPS_LOCATION_HAS_LAT_LONG;
+            } else {
+                ALOGE("%s: utc format error = %s", __FUNCTION__, p2);
+            }
+        } else if (strStartsWith(p2, "status=")) {
+            GpsStatus status;
+            int i = 0;
+            status.size = sizeof(GpsStatus);
+            p2 += strlen("status=");
+            while (GpsStatusString[i] != NULL) {
+                if (!strcmp(p2, GpsStatusString[i])) {
+                    break;
+                }
+                i++;
+            }
+            if (GpsStatusString[i] != NULL) {
+                status.status = i;
+                if (reader != NULL && reader->status_cb != NULL) {
+                    DLOG("%s: report status = %s", __FUNCTION__, GpsStatusString[i]);
+                    reader->status_cb(&status);
+                } else {
+                    ALOGE("%s: reader or reader->status_cb is NULL", __FUNCTION__);
+                }
+            } else {
+                ALOGE("%s: unknow status = %s", __FUNCTION__, p2);
+            }
+        } else if (strStartsWith(p2, "ntptime")) {
+            if (reader != NULL && reader->request_utc_time_cb != NULL) {
+                DLOG("request ntp time");
+                reader->request_utc_time_cb();
+            } else {
+                ALOGE("%s: reader or reader->request_utc_time_cb is NULL", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "satellite=")) {
+            char *svInfo[GPS_MAX_SVS];
+            char *p3;
+            int i = 0;
+            p2 += strlen("satellite=");
+            if (strlen(p2) >= 7) {        //一组卫星数据至少7个字符
+                p3 = p2;
+                while (*p3 != '\0') {
+                    if (*p3 == '-') {
+                        *p3 = ' ';
+                    } else if (*p3 == '/') {
+                        *p3 = '|';
+                    }
+                    p3++;
+                }
+                while ((p2 != NULL) && (i < GPS_MAX_SVS)) {
+                    p3 = p2;
+                    if ((p2 = strchr(p2, '|')) != NULL) {
+                        *p2 = '\0';
+                        p2++;
+                    }
+                    svInfo[i++] = p3;
+                }
+            }
+            svInfo[i] = NULL;
+            if (setGpsSvInfo((const char *const *) svInfo)) {
+                svUpdate = 1;
+            }
+        } else if (strStartsWith(p2, "nmea=")) {
+            p2 += strlen("nmea=");
+            if (reader != NULL && reader->nmea_cb != NULL) {
+                reader->nmea_cb(gpsData.timestamp, p2, strlen(p2));
+            } else {
+                ALOGE("%s: reader or reader->nmea_cb is NULL", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "downloadxtra")) {
+            if (reader != NULL && reader->download_request_cb != NULL) {
+                DLOG("download xtra gps data");
+                reader->download_request_cb();
+            } else {
+                ALOGE("%s: reader or reader->download_request_cb is NULL", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "AGpsType=")) {
+            int i = 0;
+            p2 += strlen("AGpsType=");
+            while (AGpsTypeString[i] != NULL) {
+                if (!strcmp(p2, AGpsTypeString[i])) {
+                    break;
+                }
+                i++;
+            }
+            if (AGpsTypeString[i] != NULL) {
+                astatus.type = i;
+                aGpsUpdate++;
+            } else {
+                ALOGE("%s: unknow astatus type = %s", __FUNCTION__, p2);
+            }
+        } else if (strStartsWith(p2, "AGpsStatus=")) {
+            int i = 0;
+            p2 += strlen("AGpsStatus=");
+            while (AGpsStatusString[i] != NULL) {
+                if (!strcmp(p2, AGpsStatusString[i])) {
+                    break;
+                }
+                i++;
+            }
+            if (AGpsStatusString[i] != NULL) {
+                astatus.status = i;
+                aGpsUpdate++;
+            } else {
+                ALOGE("%s: unknow astatus = %s", __FUNCTION__, p2);
+            }
+        } else if (strStartsWith(p2, "AGpsSinAddr=")) {
+            struct sockaddr_in *addr_v4 = (struct sockaddr_in *) &astatus.addr;
+            p2 += strlen("AGpsSinAddr=");
+            astatus.ipaddr = INADDR_NONE;
+            addr_v4->sin_family = AF_INET;
+            addr_v4->sin_port = 1234;
+            inet_aton(p2, &(addr_v4->sin_addr));
+            astatus.addr.ss_family = AF_INET;
+            if (aGpsUpdate >= 2) {
+                if (reader != NULL && reader->agps_status_cb != NULL) {
+                    reader->agps_status_cb(&astatus);
+                } else {
+                    ALOGE("%s: reader or reader->agps_status_cb is NULL", __FUNCTION__);
+                }
+            } else {
+                DLOG("%s: need to set \"AGpsType\" and \"AGpsStatus\" before \"AGpsSinAddr\"", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "NiNotification=")) {
+            GpsNiNotification ni;
+            p2 += strlen("NiNotification=");
+            ni.size = sizeof(GpsNiNotification);
+            ni.notification_id = str2int(p2, NULL);
+            p2 = get_str_end(p2);
+            p2 = get_str_begin(p2);
+            ni.notify_flags = str2int(p2, NULL);
+            ni.timeout = 0;
+            ni.default_response = GPS_NI_RESPONSE_ACCEPT;
+            if (reader != NULL && reader->notify_cb != NULL) {
+                reader->notify_cb(&ni);
+            } else {
+                ALOGE("%s: reader or reader->notify_cb is NULL", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "agpsrilid=")) {
+            uint32_t flags;
+            p2 += strlen("agpsrilid=");
+            flags = str2int(p2, NULL);
+            if (reader != NULL && reader->request_setid != NULL) {
+                reader->request_setid(flags);
+            } else {
+                ALOGE("%s: reader or reader->request_setid is NULL", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "agpsrilloc=")) {
+            uint32_t flags;
+            p2 += strlen("agpsrilloc=");
+            flags = str2int(p2, NULL);
+            if (reader != NULL && reader->request_refloc != NULL) {
+                reader->request_refloc(flags);
+            } else {
+                ALOGE("%s: reader or reader->request_refloc is NULL", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "geofence_transition=")) {
+            int32_t geofence_id;
+            int32_t transition;
+            p2 += strlen("geofence_transition=");
+            geofence_id = str2int(p2, NULL);
+            p2 = get_str_end(p2);
+            p2 = get_str_begin(p2);
+            transition = str2int(p2, NULL);
+            if (reader != NULL && reader->geofence_transition_callback != NULL) {
+                reader->geofence_transition_callback(geofence_id, &gpsData, transition, gpsData.timestamp);
+            } else {
+                ALOGE("%s: reader or reader->geofence_transition_callback is NULL", __FUNCTION__);
+            }
+        } else if (strStartsWith(p2, "geofence_status=")) {
+            int32_t status;
+            p2 += strlen("geofence_status=");
+            status = str2int(p2, NULL);
+            if (reader != NULL && reader->geofence_status_callback != NULL) {
+                reader->geofence_status_callback(status, &gpsData);
+            } else {
+                ALOGE("%s: reader or reader->geofence_status_callback is NULL", __FUNCTION__);
+            }
+        } else {
+            ALOGE("%s: unknow command = %s", __FUNCTION__, p2);
+        }
+    }
+    if (svUpdate == 1 || (gpsData.flags &
+                          (GPS_LOCATION_HAS_LAT_LONG | GPS_LOCATION_HAS_ALTITUDE | GPS_LOCATION_HAS_SPEED |
+                           GPS_LOCATION_HAS_BEARING))) {
+        memset((void *) lastLocation, '\0', sizeof(lastLocation));
+        sprintf(lastLocation, "longitude=%.6f:latitude=%.6f:altitude=%.2f", gpsData.longitude, gpsData.latitude,
+                gpsData.altitude);
+        if (reader != NULL && reader->callback != NULL && reader->sv_status_cb != NULL) {
+            GpsSvStatus sv;
+            if (getSvStatus(&sv)) {
+                DLOG("report satellite status.");
+                reader->sv_status_cb(&sv);
+                DLOG("%s: report  longitude = %.6f, latitude = %.6f, altitude = %.6f, speed = %.2f, timestamp = %ld",
+                     __FUNCTION__, gpsData.longitude, gpsData.latitude, gpsData.altitude, gpsData.speed,
+                     gpsData.timestamp);
+                reader->callback(&gpsData);
+                if (autoUpdate < autoUpdateCountMax) {
+                    autoUpdate = 0;
+                }
+            }
+        } else {
+            ALOGE("%s: reader or reader->callback or reader->sv_status_cb is NULL", __FUNCTION__);
+        }
+    }
+    if (pCommand != NULL) {
+        free(pCommand);
+    }
+}
+
+static void gps_state_thread(void *arg) {
+    GpsState *state = (GpsState *) arg;
+    int fifo_fd = -1;
+    int len;
+    char buffer[500];
+
+    nmea_reader_init(pReader);
+
+    DLOG("gps thread running\n");
+    for (;;) {
+        //阻塞式读
+        if ((fifo_fd = open(GPSFifoName, O_RDONLY)) < 0) {
+            ALOGE("open fifo \"%s\"(read) fail, error = %s\n", GPSFifoName, strerror(errno));
+            return;
+        }
+        buffer[0] = '\0';
+        do {
+            len = read(fifo_fd, buffer, sizeof(buffer));
+            if ((len > 0) && (len < (int) sizeof(buffer))) {
+                buffer[len] = '\0';
+                break;
+            }
+        } while (len > 0);
+        close(fifo_fd);
+        while (buffer[len - 1] == '\n' || buffer[len - 1] == '\r') {
+            buffer[len - 1] = '\0';
+            len--;
+        }
+        DLOG("gps thread received event: %s", buffer);
+        if (!strcmp(buffer, "CMD_QUIT")) {
+            DLOG("gps thread quitting on demand");
+            return;
+        } else if (!strcmp(buffer, "CMD_START")) {
+            if (!state->started) {
+                DLOG("gps thread starting location_cb=%p", state->callbacks.location_cb);
+                state->started = 1;
+                nmea_reader_set_callback(pReader, state->callbacks.location_cb);
+                pReader->status_cb = state->callbacks.status_cb;
+                pReader->request_utc_time_cb = state->callbacks.request_utc_time_cb;
+                pReader->sv_status_cb = state->callbacks.sv_status_cb;
+                pReader->nmea_cb = state->callbacks.nmea_cb;
+                pReader->download_request_cb = state->xtracallbacks.download_request_cb;
+                pReader->agps_status_cb = state->agpscallbacks.status_cb;
+                pReader->notify_cb = state->nicallbacks.notify_cb;
+                pReader->request_setid = state->rilcallbacks.request_setid;
+                pReader->request_refloc = state->rilcallbacks.request_refloc;
+                pReader->geofence_transition_callback = state->geocallbacks.geofence_transition_callback;
+                pReader->geofence_status_callback = state->geocallbacks.geofence_status_callback;
+                pReader->measurement_callback = state->measurecallbacks.measurement_callback;
+                pReader->gnss_measurement_callback = state->measurecallbacks.gnss_measurement_callback;
+                parse_gps_cmd("status=GPS_STATUS_ENGINE_ON", pReader);
+                parse_gps_cmd((const char *const) lastLocation, pReader);
+                autoUpdate = autoUpdateCountMax + 1;
+            }
+        } else if (!strcmp(buffer, "CMD_STOP")) {
+            if (state->started) {
+                DLOG("gps thread stopping");
+                parse_gps_cmd("status=GPS_STATUS_ENGINE_OFF", pReader);
+                state->started = 0;
+                nmea_reader_set_callback(pReader, NULL);
+                pReader->status_cb = NULL;
+                pReader->request_utc_time_cb = NULL;
+                pReader->sv_status_cb = NULL;
+                pReader->nmea_cb = NULL;
+                pReader->download_request_cb = NULL;
+                pReader->agps_status_cb = NULL;
+                pReader->notify_cb = NULL;
+                pReader->request_setid = NULL;
+                pReader->request_refloc = NULL;
+                pReader->geofence_transition_callback = NULL;
+                pReader->geofence_status_callback = NULL;
+                pReader->measurement_callback = NULL;
+                pReader->gnss_measurement_callback = NULL;
+            }
+        } else {
+            parse_gps_cmd((const char *const) buffer, pReader);
+            autoUpdate = autoUpdateCountMax + 1;
+        }
+    }
+}
+
+static void gps_report_thread(void *arg) {
+    GpsState *state = (GpsState *) arg;
+    for (;;) {
+        sleep(1);
+        DLOG("%s: wakeup", __FUNCTION__);
+        if (state->started) {
+            if (autoUpdate >= autoUpdateCountMax) {
+                DLOG("%s: report lastLocation", __FUNCTION__);
+                parse_gps_cmd((const char *const) lastLocation, pReader);
+                if (autoUpdate > autoUpdateCountMax) {
+                    autoUpdate--;
+                } else {
+                    autoUpdate = 0;
+                }
+            } else {
+                autoUpdate++;
+            }
+        }
+        if (!state->init) {
+            DLOG("%s: Exit", __FUNCTION__);
+            return;
+        }
+    }
+}
+
+static void gps_state_init(GpsState *state, GpsCallbacks *callbacks) {
+    state->init = 1;
+    state->started = 0;
+
+    DLOG("%s", __FUNCTION__);
+    if (access(GPSFifoName, F_OK) < 0) {
+        DLOG("%s, mkfifo %s", __FUNCTION__, GPSFifoName);
+        if (mkfifo(GPSFifoName, 0666) != 0) {
+            ALOGE("could not create fifo \"%s\", error = %s\n", GPSFifoName, strerror(errno));
+        }
+    }
+    //初始化搜星信息
+    if (setGpsSvInfo(GpsSvInfoInit) == false) {
+        goto Fail1;
+    }
+    //创建GPS HAL主线程
+    state->thread1 = callbacks->create_thread_cb("gps_state_thread", gps_state_thread, state);
+    if (!state->thread1) {
+        ALOGE("could not create gps thread1: %s", strerror(errno));
+        goto Fail1;
+    }
+    state->callbacks = *callbacks;
+    state->thread2 = callbacks->create_thread_cb("gps_report_thread", gps_report_thread, state);
+    if (!state->thread2) {
+        ALOGE("could not create gps thread2: %s", strerror(errno));
+        goto Fail1;
+    }
+    DLOG("gps state initialized");
+    return;
+    Fail1:
+    gps_state_done(state);
+}
+
+static int mock_gps_init(GpsCallbacks *callbacks) {
+    GpsState *s = _gps_state;
+    DLOG("%s", __FUNCTION__);
+    if (!s->init) {
+        gps_state_init(s, callbacks);
+    }
+
     return 0;
 }
 
-static int
-nmea_reader_update_date( NmeaReader*  r, Token  date, Token  time )
-{
-    Token  tok = date;
-    int    day, mon, year;
-
-    if (tok.p + 6 != tok.end) {
-        D("date not properly formatted: '%.*s'", tok.end-tok.p, tok.p);
+static int mock_gps_start() {
+    GpsState *s = _gps_state;
+    DLOG("%s", __FUNCTION__);
+    if (!s->init) {
+        ALOGE("%s: called with uninitialized state !!", __FUNCTION__);
         return -1;
     }
-    day  = str2int(tok.p, tok.p+2);
-    mon  = str2int(tok.p+2, tok.p+4);
-    year = str2int(tok.p+4, tok.p+6) + 2000;
-
-    if ((day|mon|year) < 0) {
-        D("date not properly formatted: '%.*s'", tok.end-tok.p, tok.p);
-        return -1;
-    }
-
-    r->utc_year  = year;
-    r->utc_mon   = mon;
-    r->utc_day   = day;
-
-    return nmea_reader_update_time( r, time );
-}
-
-
-static double
-convert_from_hhmm( Token  tok )
-{
-    double  val     = str2float(tok.p, tok.end);
-    int     degrees = (int)(floor(val) / 100);
-    double  minutes = val - degrees*100.;
-    double  dcoord  = degrees + minutes / 60.0;
-    return dcoord;
-}
-
-
-static int
-nmea_reader_update_latlong( NmeaReader*  r,
-                            Token        latitude,
-                            char         latitudeHemi,
-                            Token        longitude,
-                            char         longitudeHemi )
-{
-    double   lat, lon;
-    Token    tok;
-
-    tok = latitude;
-    if (tok.p + 6 > tok.end) {
-        D("latitude is too short: '%.*s'", tok.end-tok.p, tok.p);
-        return -1;
-    }
-    lat = convert_from_hhmm(tok);
-    if (latitudeHemi == 'S')
-        lat = -lat;
-
-    tok = longitude;
-    if (tok.p + 6 > tok.end) {
-        D("longitude is too short: '%.*s'", tok.end-tok.p, tok.p);
-        return -1;
-    }
-    lon = convert_from_hhmm(tok);
-    if (longitudeHemi == 'W')
-        lon = -lon;
-
-    r->fix.flags    |= GPS_LOCATION_HAS_LAT_LONG;
-    r->fix.latitude  = lat;
-    r->fix.longitude = lon;
+    gps_state_send(CMD_START);
     return 0;
 }
 
-
-static int
-nmea_reader_update_altitude( NmeaReader*  r,
-                             Token        altitude,
-                             Token        units )
-{
-    double  alt;
-    Token   tok = altitude;
-
-    if (tok.p >= tok.end)
+static int mock_gps_stop() {
+    GpsState *s = _gps_state;
+    DLOG("%s", __FUNCTION__);
+    if (!s->init) {
+        ALOGE("%s: called with uninitialized state !!", __FUNCTION__);
         return -1;
-
-    r->fix.flags   |= GPS_LOCATION_HAS_ALTITUDE;
-    r->fix.altitude = str2float(tok.p, tok.end);
+    }
+    gps_state_send(CMD_STOP);
     return 0;
 }
 
+static void mock_gps_cleanup(void) {
+    GpsState *s = _gps_state;
+    DLOG("%s, Enter", __FUNCTION__);
+    if (s->init) {
+        gps_state_done(s);
+    }
+    DLOG("%s, Exit", __FUNCTION__);
+}
 
-static int
-nmea_reader_update_bearing( NmeaReader*  r,
-                            Token        bearing )
-{
-    double  alt;
-    Token   tok = bearing;
-
-    if (tok.p >= tok.end)
-        return -1;
-
-    r->fix.flags   |= GPS_LOCATION_HAS_BEARING;
-    r->fix.bearing  = str2float(tok.p, tok.end);
+static int mock_gps_inject_time(GpsUtcTime time __unused, int64_t timeReference __unused, int uncertainty __unused) {
+    DLOG("%s: time = %ld, timeReference = %ld, uncertainty = %d", __FUNCTION__, time, timeReference, uncertainty);
     return 0;
 }
 
-
-static int
-nmea_reader_update_speed( NmeaReader*  r,
-                          Token        speed )
-{
-    double  alt;
-    Token   tok = speed;
-
-    if (tok.p >= tok.end)
-        return -1;
-
-    r->fix.flags   |= GPS_LOCATION_HAS_SPEED;
-    r->fix.speed    = str2float(tok.p, tok.end);
+static int mock_gps_inject_location(double latitude __unused, double longitude __unused, float accuracy __unused) {
+    DLOG("%s: latitude = %.6f, longitude = %.6f, accuracy = %.3f", __FUNCTION__, latitude, longitude, accuracy);
     return 0;
 }
 
-static int
-nmea_reader_update_accuracy( NmeaReader*  r )
-{
-    // Always return 20m accuracy.
-    // Possibly parse it from the NMEA sentence in the future.
-    r->fix.flags    |= GPS_LOCATION_HAS_ACCURACY;
-    r->fix.accuracy = 20;
+static void mock_gps_delete_aiding_data(GpsAidingData flags __unused) {
+    DLOG("%s: flags = %d", __FUNCTION__, flags);
+}
+
+static int mock_gps_set_position_mode(GpsPositionMode mode __unused, GpsPositionRecurrence recurrence __unused,
+                                      uint32_t min_interval __unused, uint32_t preferred_accuracy __unused,
+                                      uint32_t preferred_time __unused) {
+    DLOG("%s: mode = %d, recurrence = %d, min_interval = %d, preferred_accuracy = %d, preferred_time = %d",
+         __FUNCTION__, mode, recurrence, min_interval, preferred_accuracy, preferred_time);
     return 0;
 }
 
-
-static void
-nmea_reader_parse( NmeaReader*  r )
-{
-   /* we received a complete sentence, now parse it to generate
-    * a new GPS fix...
-    */
-    NmeaTokenizer  tzer[1];
-    Token          tok;
-
-    D("Received: '%.*s'", r->pos, r->in);
-    if (r->pos < 9) {
-        D("Too short. discarded.");
-        return;
-    }
-
-    nmea_tokenizer_init(tzer, r->in, r->in + r->pos);
-#if GPS_DEBUG
-    {
-        int  n;
-        D("Found %d tokens", tzer->count);
-        for (n = 0; n < tzer->count; n++) {
-            Token  tok = nmea_tokenizer_get(tzer,n);
-            D("%2d: '%.*s'", n, tok.end-tok.p, tok.p);
-        }
-    }
-#endif
-
-    tok = nmea_tokenizer_get(tzer, 0);
-    if (tok.p + 5 > tok.end) {
-        D("sentence id '%.*s' too short, ignored.", tok.end-tok.p, tok.p);
-        return;
-    }
-
-    // ignore first two characters.
-    tok.p += 2;
-    if ( !memcmp(tok.p, "GGA", 3) ) {
-        // GPS fix
-        Token  tok_time          = nmea_tokenizer_get(tzer,1);
-        Token  tok_latitude      = nmea_tokenizer_get(tzer,2);
-        Token  tok_latitudeHemi  = nmea_tokenizer_get(tzer,3);
-        Token  tok_longitude     = nmea_tokenizer_get(tzer,4);
-        Token  tok_longitudeHemi = nmea_tokenizer_get(tzer,5);
-        Token  tok_altitude      = nmea_tokenizer_get(tzer,9);
-        Token  tok_altitudeUnits = nmea_tokenizer_get(tzer,10);
-
-        nmea_reader_update_time(r, tok_time);
-        nmea_reader_update_latlong(r, tok_latitude,
-                                      tok_latitudeHemi.p[0],
-                                      tok_longitude,
-                                      tok_longitudeHemi.p[0]);
-        nmea_reader_update_altitude(r, tok_altitude, tok_altitudeUnits);
-
-    } else if ( !memcmp(tok.p, "GSA", 3) ) {
-        // do something ?
-    } else if ( !memcmp(tok.p, "RMC", 3) ) {
-        Token  tok_time          = nmea_tokenizer_get(tzer,1);
-        Token  tok_fixStatus     = nmea_tokenizer_get(tzer,2);
-        Token  tok_latitude      = nmea_tokenizer_get(tzer,3);
-        Token  tok_latitudeHemi  = nmea_tokenizer_get(tzer,4);
-        Token  tok_longitude     = nmea_tokenizer_get(tzer,5);
-        Token  tok_longitudeHemi = nmea_tokenizer_get(tzer,6);
-        Token  tok_speed         = nmea_tokenizer_get(tzer,7);
-        Token  tok_bearing       = nmea_tokenizer_get(tzer,8);
-        Token  tok_date          = nmea_tokenizer_get(tzer,9);
-
-        D("in RMC, fixStatus=%c", tok_fixStatus.p[0]);
-        if (tok_fixStatus.p[0] == 'A')
-        {
-            nmea_reader_update_date( r, tok_date, tok_time );
-
-            nmea_reader_update_latlong( r, tok_latitude,
-                                           tok_latitudeHemi.p[0],
-                                           tok_longitude,
-                                           tok_longitudeHemi.p[0] );
-
-            nmea_reader_update_bearing( r, tok_bearing );
-            nmea_reader_update_speed  ( r, tok_speed );
-        }
-    } else {
-        tok.p -= 2;
-        D("unknown sentence '%.*s", tok.end-tok.p, tok.p);
-    }
-
-    // Always update accuracy
-    nmea_reader_update_accuracy( r );
-
-    if (r->fix.flags != 0) {
-#if GPS_DEBUG
-        char   temp[256];
-        char*  p   = temp;
-        char*  end = p + sizeof(temp);
-        struct tm   utc;
-
-        p += snprintf( p, end-p, "sending fix" );
-        if (r->fix.flags & GPS_LOCATION_HAS_LAT_LONG) {
-            p += snprintf(p, end-p, " lat=%g lon=%g", r->fix.latitude, r->fix.longitude);
-        }
-        if (r->fix.flags & GPS_LOCATION_HAS_ALTITUDE) {
-            p += snprintf(p, end-p, " altitude=%g", r->fix.altitude);
-        }
-        if (r->fix.flags & GPS_LOCATION_HAS_SPEED) {
-            p += snprintf(p, end-p, " speed=%g", r->fix.speed);
-        }
-        if (r->fix.flags & GPS_LOCATION_HAS_BEARING) {
-            p += snprintf(p, end-p, " bearing=%g", r->fix.bearing);
-        }
-        if (r->fix.flags & GPS_LOCATION_HAS_ACCURACY) {
-            p += snprintf(p,end-p, " accuracy=%g", r->fix.accuracy);
-        }
-        gmtime_r( (time_t*) &r->fix.timestamp, &utc );
-        p += snprintf(p, end-p, " time=%s", asctime( &utc ) );
-        D(temp);
-#endif
-        if (r->callback) {
-            r->callback( &r->fix );
-            r->fix.flags = 0;
-        }
-        else {
-            D("no callback, keeping data until needed !");
-        }
-    }
+static int proxy_gps_xtra_init(GpsXtraCallbacks *callbacks) {
+    DLOG("%s", __FUNCTION__);
+    _gps_state->xtracallbacks = *callbacks;
+    return 0;
 }
 
-
-static void
-nmea_reader_addc( NmeaReader*  r, int  c )
-{
-    if (r->overflow) {
-        r->overflow = (c != '\n');
-        return;
-    }
-
-    if (r->pos >= (int) sizeof(r->in)-1 ) {
-        r->overflow = 1;
-        r->pos      = 0;
-        return;
-    }
-
-    r->in[r->pos] = (char)c;
-    r->pos       += 1;
-
-    if (c == '\n') {
-        nmea_reader_parse( r );
-        r->pos = 0;
-    }
+static int proxy_gps_xtra_inject_xtra_data(char *data __unused, int length __unused) {
+    DLOG("%s: data = %s, length = %d", __FUNCTION__, data, length);
+    return 0;
 }
 
-
-/*****************************************************************/
-/*****************************************************************/
-/*****                                                       *****/
-/*****       C O N N E C T I O N   S T A T E                 *****/
-/*****                                                       *****/
-/*****************************************************************/
-/*****************************************************************/
-
-/* commands sent to the gps thread */
-enum {
-    CMD_QUIT  = 0,
-    CMD_START = 1,
-    CMD_STOP  = 2
+static GpsXtraInterface s_ProxyGpsXtraInterface = {
+        sizeof(GpsXtraInterface),
+        proxy_gps_xtra_init,
+        proxy_gps_xtra_inject_xtra_data
 };
 
-
-/* this is the state of our connection to the qemu_gpsd daemon */
-typedef struct {
-    int                     init;
-    int                     fd;
-    GpsCallbacks            callbacks;
-    pthread_t               thread;
-    int                     control[2];
-} GpsState;
-
-static GpsState  _gps_state[1];
-
-
-static void
-gps_state_done( GpsState*  s )
-{
-    // tell the thread to quit, and wait for it
-    char   cmd = CMD_QUIT;
-    void*  dummy;
-    write( s->control[0], &cmd, 1 );
-    pthread_join(s->thread, &dummy);
-
-    // close the control socket pair
-    close( s->control[0] ); s->control[0] = -1;
-    close( s->control[1] ); s->control[1] = -1;
-
-    // close connection to the QEMU GPS daemon
-    close( s->fd ); s->fd = -1;
-    s->init = 0;
+static void proxy_agps_init(AGpsCallbacks *callbacks) {
+    DLOG("%s", __FUNCTION__);
+    _gps_state->agpscallbacks = *callbacks;
 }
 
-
-static void
-gps_state_start( GpsState*  s )
-{
-    char  cmd = CMD_START;
-    int   ret;
-
-    do { ret=write( s->control[0], &cmd, 1 ); }
-    while (ret < 0 && errno == EINTR);
-
-    if (ret != 1)
-        D("%s: could not send CMD_START command: ret=%d: %s",
-          __FUNCTION__, ret, strerror(errno));
-}
-
-
-static void
-gps_state_stop( GpsState*  s )
-{
-    char  cmd = CMD_STOP;
-    int   ret;
-
-    do { ret=write( s->control[0], &cmd, 1 ); }
-    while (ret < 0 && errno == EINTR);
-
-    if (ret != 1)
-        D("%s: could not send CMD_STOP command: ret=%d: %s",
-          __FUNCTION__, ret, strerror(errno));
-}
-
-
-static int
-epoll_register( int  epoll_fd, int  fd )
-{
-    struct epoll_event  ev;
-    int                 ret, flags;
-
-    /* important: make the fd non-blocking */
-    flags = fcntl(fd, F_GETFL);
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-
-    ev.events  = EPOLLIN;
-    ev.data.fd = fd;
-    do {
-        ret = epoll_ctl( epoll_fd, EPOLL_CTL_ADD, fd, &ev );
-    } while (ret < 0 && errno == EINTR);
-    return ret;
-}
-
-
-static int
-epoll_deregister( int  epoll_fd, int  fd )
-{
-    int  ret;
-    do {
-        ret = epoll_ctl( epoll_fd, EPOLL_CTL_DEL, fd, NULL );
-    } while (ret < 0 && errno == EINTR);
-    return ret;
-}
-
-/* this is the main thread, it waits for commands from gps_state_start/stop and,
- * when started, messages from the QEMU GPS daemon. these are simple NMEA sentences
- * that must be parsed to be converted into GPS fixes sent to the framework
- */
-static void
-gps_state_thread( void*  arg )
-{
-    GpsState*   state = (GpsState*) arg;
-    NmeaReader  reader[1];
-    int         epoll_fd   = epoll_create(2);
-    int         started    = 0;
-    int         gps_fd     = state->fd;
-    int         control_fd = state->control[1];
-
-    nmea_reader_init( reader );
-
-    // register control file descriptors for polling
-    epoll_register( epoll_fd, control_fd );
-    epoll_register( epoll_fd, gps_fd );
-
-    D("gps thread running");
-
-    // now loop
-    for (;;) {
-        struct epoll_event   events[2];
-        int                  ne, nevents;
-
-        nevents = epoll_wait( epoll_fd, events, 2, -1 );
-        if (nevents < 0) {
-            if (errno != EINTR)
-                ALOGE("epoll_wait() unexpected error: %s", strerror(errno));
-            continue;
-        }
-        D("gps thread received %d events", nevents);
-        for (ne = 0; ne < nevents; ne++) {
-            if ((events[ne].events & (EPOLLERR|EPOLLHUP)) != 0) {
-                ALOGE("EPOLLERR or EPOLLHUP after epoll_wait() !?");
-                return;
-            }
-            if ((events[ne].events & EPOLLIN) != 0) {
-                int  fd = events[ne].data.fd;
-
-                if (fd == control_fd)
-                {
-                    char  cmd = 255;
-                    int   ret;
-                    D("gps control fd event");
-                    do {
-                        ret = read( fd, &cmd, 1 );
-                    } while (ret < 0 && errno == EINTR);
-
-                    if (cmd == CMD_QUIT) {
-                        D("gps thread quitting on demand");
-                        return;
-                    }
-                    else if (cmd == CMD_START) {
-                        if (!started) {
-                            D("gps thread starting  location_cb=%p", state->callbacks.location_cb);
-                            started = 1;
-                            nmea_reader_set_callback( reader, state->callbacks.location_cb );
-                        }
-                    }
-                    else if (cmd == CMD_STOP) {
-                        if (started) {
-                            D("gps thread stopping");
-                            started = 0;
-                            nmea_reader_set_callback( reader, NULL );
-                        }
-                    }
-                }
-                else if (fd == gps_fd)
-                {
-                    char  buff[32];
-                    D("gps fd event");
-                    for (;;) {
-                        int  nn, ret;
-
-                        ret = read( fd, buff, sizeof(buff) );
-                        if (ret < 0) {
-                            if (errno == EINTR)
-                                continue;
-                            if (errno != EWOULDBLOCK)
-                                ALOGE("error while reading from gps daemon socket: %s:", strerror(errno));
-                            break;
-                        }
-                        D("received %d bytes: %.*s", ret, ret, buff);
-                        for (nn = 0; nn < ret; nn++)
-                            nmea_reader_addc( reader, buff[nn] );
-                    }
-                    D("gps fd event end");
-                }
-                else
-                {
-                    ALOGE("epoll_wait() returned unkown fd %d ?", fd);
-                }
-            }
-        }
-    }
-}
-
-
-static void
-gps_state_init( GpsState*  state, GpsCallbacks* callbacks )
-{
-    state->init       = 1;
-    state->control[0] = -1;
-    state->control[1] = -1;
-    state->fd         = -1;
-
-    state->fd = qemud_channel_open(QEMU_CHANNEL_NAME);
-
-    if (state->fd < 0) {
-        D("no gps emulation detected");
-        return;
-    }
-
-    D("gps emulation will read from '%s' qemud channel", QEMU_CHANNEL_NAME );
-
-    if ( socketpair( AF_LOCAL, SOCK_STREAM, 0, state->control ) < 0 ) {
-        ALOGE("could not create thread control socket pair: %s", strerror(errno));
-        goto Fail;
-    }
-
-    state->thread = callbacks->create_thread_cb( "gps_state_thread", gps_state_thread, state );
-
-    if ( !state->thread ) {
-        ALOGE("could not create gps thread: %s", strerror(errno));
-        goto Fail;
-    }
-
-    state->callbacks = *callbacks;
-
-    D("gps state initialized");
-    return;
-
-Fail:
-    gps_state_done( state );
-}
-
-
-/*****************************************************************/
-/*****************************************************************/
-/*****                                                       *****/
-/*****       I N T E R F A C E                               *****/
-/*****                                                       *****/
-/*****************************************************************/
-/*****************************************************************/
-
-
-static int
-qemu_gps_init(GpsCallbacks* callbacks)
-{
-    GpsState*  s = _gps_state;
-
-    if (!s->init)
-        gps_state_init(s, callbacks);
-
-    if (s->fd < 0)
-        return -1;
-
+static int proxy_agps_data_conn_open(const char *apn __unused) {
+    DLOG("%s: apn = %s", __FUNCTION__, apn);
     return 0;
 }
 
-static void
-qemu_gps_cleanup(void)
-{
-    GpsState*  s = _gps_state;
-
-    if (s->init)
-        gps_state_done(s);
-}
-
-
-static int
-qemu_gps_start()
-{
-    GpsState*  s = _gps_state;
-
-    if (!s->init) {
-        D("%s: called with uninitialized state !!", __FUNCTION__);
-        return -1;
-    }
-
-    D("%s: called", __FUNCTION__);
-    gps_state_start(s);
+static int proxy_agps_data_conn_closed() {
+    DLOG("%s", __FUNCTION__);
     return 0;
 }
 
-
-static int
-qemu_gps_stop()
-{
-    GpsState*  s = _gps_state;
-
-    if (!s->init) {
-        D("%s: called with uninitialized state !!", __FUNCTION__);
-        return -1;
-    }
-
-    D("%s: called", __FUNCTION__);
-    gps_state_stop(s);
+static int proxy_agps_data_conn_failed() {
+    DLOG("%s", __FUNCTION__);
     return 0;
 }
 
-
-static int
-qemu_gps_inject_time(GpsUtcTime time, int64_t timeReference, int uncertainty)
-{
+static int proxy_agps_set_server(AGpsType type __unused, const char *hostname __unused, int port __unused) {
+    DLOG("%s: type = %d, hostname = %s, port = %d", __FUNCTION__, type, hostname, port);
     return 0;
 }
 
-static int
-qemu_gps_inject_location(double latitude, double longitude, float accuracy)
-{
+static int proxy_agps_data_conn_open_with_apn_ip_type(const char *apn __unused, ApnIpType apnIpType __unused) {
+    DLOG("%s: apn = %s, apnIpType = %d", __FUNCTION__, apn, apnIpType);
     return 0;
+}
+
+static AGpsInterface s_ProxyAGpsInterface = {
+        sizeof(AGpsInterface),
+        proxy_agps_init,
+        proxy_agps_data_conn_open,
+        proxy_agps_data_conn_closed,
+        proxy_agps_data_conn_failed,
+        proxy_agps_set_server,
+        proxy_agps_data_conn_open_with_apn_ip_type
+};
+
+static void proxy_gps_ni_init(GpsNiCallbacks *callbacks) {
+    DLOG("%s", __FUNCTION__);
+    _gps_state->nicallbacks = *callbacks;
+}
+
+static void proxy_gps_ni_respond(int notif_id __unused, GpsUserResponseType user_response __unused) {
+    DLOG("%s: notif_id = %d, user_response = %d", __FUNCTION__, notif_id, user_response);
+}
+
+static GpsNiInterface s_ProxyGpsNiInterface = {
+        sizeof(GpsNiInterface),
+        proxy_gps_ni_init,
+        proxy_gps_ni_respond
+};
+
+static void proxy_agps_ril_init(AGpsRilCallbacks *callbacks) {
+    DLOG("%s", __FUNCTION__);
+    _gps_state->rilcallbacks = *callbacks;
 }
 
 static void
-qemu_gps_delete_aiding_data(GpsAidingData flags)
-{
+proxy_agps_ril_set_ref_location(const AGpsRefLocation *agps_reflocation __unused, size_t sz_struct __unused) {
+    DLOG("%s: type = %d, sz_struct = %zu", __FUNCTION__, agps_reflocation->type, sz_struct);
 }
 
-static int qemu_gps_set_position_mode(GpsPositionMode mode, int fix_frequency)
-{
-    // FIXME - support fix_frequency
-    return 0;
+static void proxy_agps_ril_set_set_id(AGpsSetIDType type __unused, const char *setid __unused) {
+    DLOG("%s: type = %d, setid = %s", __FUNCTION__, type, setid);
 }
 
-static const void*
-qemu_gps_get_extension(const char* name)
-{
-    // no extensions supported
+static void proxy_agps_ril_ni_message(uint8_t *msg __unused, size_t len __unused) {
+    DLOG("%s: msg = %d, len = %zu", __FUNCTION__, msg[0], len);
+}
+
+static void proxy_agps_ril_update_network_state(int connected __unused, int type __unused, int roaming __unused,
+                                                const char *extra_info __unused) {
+    DLOG("%s: connected = %d, type = %d, roaming = %d, extra_info = %s", __FUNCTION__, connected, type, roaming,
+         extra_info);
+}
+
+static void proxy_agps_ril_update_network_availability(int avaiable __unused, const char *apn __unused) {
+    DLOG("%s: avaiable = %d, apn = %s", __FUNCTION__, avaiable, apn);
+}
+
+static AGpsRilInterface s_ProxyAGpsRilInterface = {
+        sizeof(AGpsRilInterface),
+        proxy_agps_ril_init,
+        proxy_agps_ril_set_ref_location,
+        proxy_agps_ril_set_set_id,
+        proxy_agps_ril_ni_message,
+        proxy_agps_ril_update_network_state,
+        proxy_agps_ril_update_network_availability
+};
+
+void proxy_gps_geofencing_init(GpsGeofenceCallbacks *callbacks) {
+    DLOG("%s", __FUNCTION__);
+    _gps_state->geocallbacks = *callbacks;
+}
+
+void proxy_gps_geofencing_add_geofence_area(int32_t geofence_id __unused, double latitude __unused, double longitude
+                                            __unused, double radius_meters __unused, int last_transition __unused,
+                                            int monitor_transitions __unused, int notification_responsiveness_ms
+                                            __unused, int unknown_timer_ms __unused) {
+    DLOG("%s: id=%d, latitude=%.6f, longitude=%.6f, radius_meters=%.6f, last_transition = %d, monitor_transitions = %d, notification_responsiveness_ms = %d, unknown_timer_ms = %d",
+         __FUNCTION__, geofence_id, latitude, longitude, radius_meters, last_transition, monitor_transitions,
+         notification_responsiveness_ms, unknown_timer_ms);
+}
+
+void proxy_gps_geofencing_pause_geofence(int32_t geofence_id __unused) {
+    DLOG("%s: geofence_id = %d", __FUNCTION__, geofence_id);
+}
+
+void proxy_gps_geofencing_resume_geofence(int32_t geofence_id __unused, int monitor_transitions __unused) {
+    DLOG("%s: geofence_id = %d, monitor_transitions = %d", __FUNCTION__, geofence_id, monitor_transitions);
+}
+
+void proxy_gps_geofencing_remove_geofence_area(int32_t geofence_id __unused) {
+    DLOG("%s: geofence_id = %d", __FUNCTION__, geofence_id);
+}
+
+static GpsGeofencingInterface s_ProxyGpsGeofencingInterface = {
+        sizeof(GpsGeofencingInterface),
+        proxy_gps_geofencing_init,
+        proxy_gps_geofencing_add_geofence_area,
+        proxy_gps_geofencing_pause_geofence,
+        proxy_gps_geofencing_resume_geofence,
+        proxy_gps_geofencing_remove_geofence_area
+};
+
+int proxy_gps_measurement_init(GpsMeasurementCallbacks *callbacks) {
+    DLOG("%s", __FUNCTION__);
+    _gps_state->measurecallbacks = *callbacks;
+    return GPS_MEASUREMENT_OPERATION_SUCCESS;
+}
+
+void proxy_gps_measurement_close() {
+    DLOG("%s", __FUNCTION__);
+}
+
+static GpsMeasurementInterface s_ProxyGpsMeasurementInterface = {
+        sizeof(GpsMeasurementInterface),
+        proxy_gps_measurement_init,
+        proxy_gps_measurement_close
+};
+
+static const void *mock_gps_get_extension(const char *name) {
+    DLOG("%s: name = %s", __FUNCTION__, name);
+    if (!strcmp(name, GPS_XTRA_INTERFACE)) {
+        return &s_ProxyGpsXtraInterface;
+    } else if (!strcmp(name, AGPS_INTERFACE)) {
+        return &s_ProxyAGpsInterface;
+    } else if (!strcmp(name, GPS_NI_INTERFACE)) {
+        return &s_ProxyGpsNiInterface;
+    } else if (!strcmp(name, AGPS_RIL_INTERFACE)) {
+        return &s_ProxyAGpsRilInterface;
+    } else if (!strcmp(name, GPS_GEOFENCING_INTERFACE)) {
+        return &s_ProxyGpsGeofencingInterface;
+    } else if (!strcmp(name, GPS_MEASUREMENT_INTERFACE)) {
+        return &s_ProxyGpsMeasurementInterface;
+    }
     return NULL;
 }
 
-static const GpsInterface  qemuGpsInterface = {
-    sizeof(GpsInterface),
-    qemu_gps_init,
-    qemu_gps_start,
-    qemu_gps_stop,
-    qemu_gps_cleanup,
-    qemu_gps_inject_time,
-    qemu_gps_inject_location,
-    qemu_gps_delete_aiding_data,
-    qemu_gps_set_position_mode,
-    qemu_gps_get_extension,
+static const GpsInterface mockGpsInterface = {
+        sizeof(GpsInterface),
+        mock_gps_init,
+        mock_gps_start,
+        mock_gps_stop,
+        mock_gps_cleanup,
+        mock_gps_inject_time,
+        mock_gps_inject_location,
+        mock_gps_delete_aiding_data,
+        mock_gps_set_position_mode,
+        mock_gps_get_extension,
 };
 
-const GpsInterface* gps__get_gps_interface(struct gps_device_t* dev)
-{
-    return &qemuGpsInterface;
+const GpsInterface *gps__get_gps_interface(struct gps_device_t *dev __unused) {
+    DLOG("%s: dev = %p", __FUNCTION__, dev);
+    return &mockGpsInterface;
 }
 
-static int open_gps(const struct hw_module_t* module, char const* name,
-        struct hw_device_t** device)
-{
-    struct gps_device_t *dev = malloc(sizeof(struct gps_device_t));
-    memset(dev, 0, sizeof(*dev));
+static int open_gps(const struct hw_module_t *module, char const *name __unused, struct hw_device_t **device) {
+    struct gps_device_t *dev = (struct gps_device_t *) malloc(sizeof(struct gps_device_t));
+    DLOG("%s: name = %s", __FUNCTION__, name);
+    memset((void *) dev, 0, sizeof(*dev));
 
     dev->common.tag = HARDWARE_DEVICE_TAG;
     dev->common.version = 0;
-    dev->common.module = (struct hw_module_t*)module;
-//    dev->common.close = (int (*)(struct hw_device_t*))close_lights;
+    dev->common.module = (struct hw_module_t *) module;
+//  dev->common.close = (int (*)(struct hw_device_t*))close_lights;
     dev->get_gps_interface = gps__get_gps_interface;
 
-    *device = (struct hw_device_t*)dev;
+    *device = (struct hw_device_t *) dev;
     return 0;
 }
 
-
 static struct hw_module_methods_t gps_module_methods = {
-    .open = open_gps
+        .open = open_gps
 };
 
 struct hw_module_t HAL_MODULE_INFO_SYM = {
-    .tag = HARDWARE_MODULE_TAG,
-    .version_major = 1,
-    .version_minor = 0,
-    .id = GPS_HARDWARE_MODULE_ID,
-    .name = "Goldfish GPS Module",
-    .author = "The Android Open Source Project",
-    .methods = &gps_module_methods,
+        .tag = HARDWARE_MODULE_TAG,
+        .version_major = 1,
+        .version_minor = 0,
+        .id = GPS_HARDWARE_MODULE_ID,
+        .name = "Goldfish GPS Module",
+        .author = "The Android Open Source Project",
+        .methods = &gps_module_methods,
 };
