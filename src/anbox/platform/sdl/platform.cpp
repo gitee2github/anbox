@@ -42,7 +42,6 @@ Platform::Platform(
     const Configuration &config)
     : input_manager_(input_manager),
       event_thread_running_(false),
-      ime_thread_running_(false),
       config_(config) {
   // Don't block the screensaver from kicking in. It will be blocked
   // by the desktop shell already and we don't have to do this again.
@@ -139,10 +138,7 @@ Platform::~Platform() {
     event_thread_running_ = false;
     event_thread_.join();
   }
-  if (ime_thread_running_) {
-    ime_thread_running_ = false;
-    ime_thread_.join();
-  }
+  ime_thread_.join();
   if (ime_socket_ != -1) {
     close(ime_socket_);
   }
@@ -491,6 +487,7 @@ std::shared_ptr<wm::Window> Platform::create_window(
   auto id = next_window_id();
   auto w = std::make_shared<Window>(renderer_, id, task, shared_from_this(), frame, title, !window_size_immutable_);
   focused_sdl_window_id_ = w->window_id();
+  printf("Insert id:%d, %d\n", id, task);
   windows_.insert({id, w});
   return w;
 }
@@ -503,6 +500,7 @@ void Platform::window_deleted(const Window::Id &id) {
   }
   if (auto window = w->second.lock())
     window_manager_->remove_task(window->task());
+  printf("Remove id:%d\n", id);
   windows_.erase(w);
 }
 

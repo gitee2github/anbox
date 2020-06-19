@@ -43,6 +43,14 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
 
   std::map<Task::Id, WindowState::List> task_updates;
 
+  printf("=================================\n");
+  for (const auto &window : updated) {
+    printf("updated:%d\n", window.task());
+  }
+  for (const auto &window : removed) {
+    printf("removed:%d\n", removed.task());
+  }
+  printf("##########\n");
   for (const auto &window : updated) {
     // Ignore all windows which are not part of the freeform task stack
     if (window.stack() != Stack::Id::Freeform) continue;
@@ -75,6 +83,7 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
       auto w = p->create_window(window.task(), window.frame(), title);
       if (w) {
         w->attach();
+        printf("update window: %d\n", window.task());
         windows_.insert({window.task(), w});
       } else {
         // FIXME can we call this here safely or do we need to schedule the removal?
@@ -98,8 +107,10 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
 
     if (w == windows_.end()) {
       it = need_removed.erase(it);
+      printf("need_removed window: %d\n", *it);
     } else if (task_updates.find(*it) == task_updates.end()) {
       auto platform_window = w->second;
+      printf("need_removed window: %d\n", *it);
       platform_window->release();
       windows_.erase(w);
       it = need_removed.erase(it);
@@ -120,8 +131,10 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
       auto platform_window = w->second;
       platform_window->release();
       windows_.erase(w);
+      printf("removed window: %d\n", window.task());
     } else {
       need_removed.insert(window.task());
+      printf("insert need_removed window: %d\n", window.task());
     }
   }
 }
