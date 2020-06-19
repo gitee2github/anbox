@@ -210,6 +210,7 @@ static int hwc_set(hwc_composer_device_1_t* dev, size_t numDisplays,
     }
 
     rcEnc->rcPostAllLayersDone(rcEnc);
+    hostCon->flush();
 
     check_sync_fds(numDisplays, displays);
 
