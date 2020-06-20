@@ -74,6 +74,8 @@ class Platform : public std::enable_shared_from_this<Platform>,
 
   bool supports_multi_window() const override;
 
+  int get_register_event() const override {return register_event;}
+
  private:
   void process_events();
   void process_input_event(const SDL_Event &event);
@@ -118,6 +120,8 @@ class Platform : public std::enable_shared_from_this<Platform>,
   void push_finger_down(int x, int y, int finger_id, std::vector<input::Event> &touch_events);
   void push_finger_up(int finger_id, std::vector<input::Event> &touch_events);
   void push_finger_motion(int x, int y, int finger_id, std::vector<input::Event> &touch_events);
+
+  int register_event = 0;
 };
 } // namespace sdl
 } // namespace platform

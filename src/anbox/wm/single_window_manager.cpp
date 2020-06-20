@@ -75,5 +75,14 @@ void SingleWindowManager::remove_task(const Task::Id &task) {
   // application.
   kill(getpid(), SIGTERM);
 }
+
+void SingleWindowManager::insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) {
+  (void)task;
+  (void)pt;
+}
+
+void SingleWindowManager::erase_task(const Task::Id &task) {
+  (void)task;
+}
 }  // namespace wm
 }  // namespace anbox

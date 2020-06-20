@@ -20,6 +20,7 @@
 #include "anbox/platform/base_platform.h"
 #include "anbox/bridge/android_api_stub.h"
 #include "anbox/logger.h"
+#include <SDL2/SDL.h>
 
 #include <algorithm>
 
@@ -34,8 +35,6 @@ MultiWindowManager::~MultiWindowManager() {}
 
 void MultiWindowManager::apply_window_state_update(const WindowState::List &updated,
                                         const WindowState::List &removed) {
-  std::lock_guard<std::mutex> l(mutex_);
-
   // Base on the update we get from the Android WindowManagerService we will
   // create different window instances with the properties supplied. Incoming
   // layer updates from SurfaceFlinger will be mapped later into those windows
@@ -43,14 +42,6 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
 
   std::map<Task::Id, WindowState::List> task_updates;
 
-  printf("=================================\n");
-  for (const auto &window : updated) {
-    printf("updated:%d\n", window.task());
-  }
-  for (const auto &window : removed) {
-    printf("removed:%d\n", removed.task());
-  }
-  printf("##########\n");
   for (const auto &window : updated) {
     // Ignore all windows which are not part of the freeform task stack
     if (window.stack() != Stack::Id::Freeform) continue;
@@ -60,13 +51,12 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
 
     // If we know that task already we first collect all window updates
     // for it so we can apply all of them together.
-    auto w = windows_.find(window.task());
-    if (w != windows_.end()) {
-      auto t = task_updates.find(window.task());
-      if (t == task_updates.end())
-        task_updates.insert({window.task(), {window}});
-      else
-        task_updates[window.task()].push_back(window);
+    auto t = task_updates.find(window.task());
+    if (t == task_updates.end())
+      task_updates.insert({window.task(), {window}});
+    else
+      task_updates[window.task()].push_back(window);
+    if (find_window_for_task(window.task()) != nullptr) {
       continue;
     }
 
@@ -76,65 +66,44 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
 
     auto title = window.package_name();
     auto app = app_db_->find_by_package(window.package_name());
-    if (app.valid())
+    if (app.valid()) {
       title = app.name;
-
+    }
     if (auto p = platform_.lock()) {
-      auto w = p->create_window(window.task(), window.frame(), title);
-      if (w) {
-        w->attach();
-        printf("update window: %d\n", window.task());
-        windows_.insert({window.task(), w});
-      } else {
-        // FIXME can we call this here safely or do we need to schedule the removal?
-        remove_task(window.task());
+      SDL_Event event;
+      SDL_memset(&event, 0, sizeof(event));
+      event.type = p->get_register_event();
+      event.user.code = platform::USER_CREATE_WINDOW;
+      event.user.data1 = new(std::nothrow) platform::manager_window_param(window.task(), window.frame(), title);
+      event.user.data2 = 0;
+      SDL_PushEvent(&event);
+    }
+  }
+
+  {
+    // As final step we process all windows we need to remove as they
+    // got killed on the other side. We need to respect here that we
+    // also get removals for windows which are part of a task which is
+    // still in use by other windows.
+    std::lock_guard<std::mutex> l(mutex_);
+    for (auto it = windows_.begin(); it != windows_.end(); ++it) {
+      auto w = task_updates.find(it->first);
+      if (w != task_updates.end()) {
+	it->second->update_state(w->second);
+	continue;
       }
-    }
-  }
-
-  // Send updates we collected per task down to the corresponding window
-  // so that they can update themself.
-  for (const auto &u : task_updates) {
-    auto w = windows_.find(u.first);
-    if (w == windows_.end()) continue;
-
-    w->second->update_state(u.second);
-  }
-
-  // remove black window which appear after close sometimes
-  for (std::set<Task::Id>::iterator it = need_removed.begin(); it != need_removed.end();) {
-    auto w = windows_.find(*it);
-
-    if (w == windows_.end()) {
-      it = need_removed.erase(it);
-      printf("need_removed window: %d\n", *it);
-    } else if (task_updates.find(*it) == task_updates.end()) {
-      auto platform_window = w->second;
-      printf("need_removed window: %d\n", *it);
+      auto platform_window = it->second;
       platform_window->release();
-      windows_.erase(w);
-      it = need_removed.erase(it);
-    } else {
-      ++it;
-    }
-  }
 
-  // As final step we process all windows we need to remove as they
-  // got killed on the other side. We need to respect here that we
-  // also get removals for windows which are part of a task which is
-  // still in use by other windows.
-  for (const auto &window : removed) {
-    auto w = windows_.find(window.task());
-    if (w == windows_.end()) continue;
-
-    if (task_updates.find(window.task()) == task_updates.end()) {
-      auto platform_window = w->second;
-      platform_window->release();
-      windows_.erase(w);
-      printf("removed window: %d\n", window.task());
-    } else {
-      need_removed.insert(window.task());
-      printf("insert need_removed window: %d\n", window.task());
+      if (auto p = platform_.lock()) {
+        SDL_Event event;
+        SDL_memset(&event, 0, sizeof(event));
+        event.type = p->get_register_event();
+        event.user.code = platform::USER_DESTROY_WINDOW;
+        event.user.data1 = new(std::nothrow) platform::manager_window_param(it->first, graphics::Rect(0, 0, 0, 0), "");
+        event.user.data2 = 0;
+        SDL_PushEvent(&event);
+      }
     }
   }
 }
@@ -159,5 +128,18 @@ void MultiWindowManager::set_focused_task(const Task::Id &task) {
 void MultiWindowManager::remove_task(const Task::Id &task) {
   android_api_stub_->remove_task(task);
 }
+
+void MultiWindowManager::insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) {
+  std::lock_guard<std::mutex> l(mutex_);
+  windows_.insert({ task, pt });
+}
+
+void MultiWindowManager::erase_task(const Task::Id &task) {
+  std::lock_guard<std::mutex>l(mutex_);
+  auto it = windows_.find(task);
+  if (it != windows_.end()) {
+    windows_.erase(it);
+  }
+} 
 }  // namespace wm
 }  // namespace anbox

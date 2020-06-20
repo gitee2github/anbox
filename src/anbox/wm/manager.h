@@ -39,6 +39,8 @@ class Manager {
                            const std::int32_t &resize_mode) = 0;
   virtual void set_focused_task(const Task::Id &task) = 0;
   virtual void remove_task(const Task::Id &task) = 0;
+  virtual void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) = 0;
+  virtual void erase_task(const Task::Id &task) = 0;
 
   // FIXME only applies for the multi-window case
   virtual std::shared_ptr<Window> find_window_for_task(const Task::Id &task) = 0;

@@ -38,6 +38,22 @@ namespace input {
 class Manager;
 } // namespace input
 namespace platform {
+enum User_Event {
+  USER_CREATE_WINDOW,
+  USER_DESTROY_WINDOW
+};
+
+struct manager_window_param {
+  int windowId = 0;
+  graphics::Rect rect;
+  std::string title;
+  manager_window_param (int id, graphics::Rect r, std::string t):
+    windowId(id),
+    rect(r),
+    title(t)
+    {}
+};
+
 class BasePlatform {
  public:
   virtual ~BasePlatform() {}
@@ -58,6 +74,7 @@ class BasePlatform {
   virtual void set_window_manager(const std::shared_ptr<wm::Manager> &window_manager) = 0;
 
   virtual bool supports_multi_window() const = 0;
+  virtual int get_register_event() const = 0;
 };
 
 struct Configuration {

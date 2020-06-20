@@ -71,5 +71,10 @@ void NullPlatform::set_window_manager(const std::shared_ptr<wm::Manager> &window
 bool NullPlatform::supports_multi_window() const {
   return false;
 }
+
+int NullPlatform::get_register_event() const {
+  ERROR("Not implemented");
+  return -1;
+}
 }  // namespace wm
 }  // namespace anbox
