@@ -89,8 +89,8 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
     for (auto it = windows_.begin(); it != windows_.end(); ++it) {
       auto w = task_updates.find(it->first);
       if (w != task_updates.end()) {
-	it->second->update_state(w->second);
-	continue;
+        it->second->update_state(w->second);
+        continue;
       }
       auto platform_window = it->second;
       platform_window->release();

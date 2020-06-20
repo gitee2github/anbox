@@ -249,21 +249,21 @@ void Platform::process_events() {
             if (param) {
               if (event_type == USER_CREATE_WINDOW) {
                 auto w = create_window(param->windowId, param->rect, param->title);
-		if (w) {
-		  w->attach();
-		  window_manager_->insert_task(param->windowId, w);
-		} else {
-		  WARNING("create window failed! remove task on android!");
-		  window_manager_->remove_task(param->windowId);
-		}
-	      } else if (event_type == USER_DESTROY_WINDOW) {
-		 window_manager_->erase_task(param->windowId);
-	      }
-	      delete param;
-	      param = nullptr;
+                if (w) {
+                  w->attach();
+                  window_manager_->insert_task(param->windowId, w);
+                } else {
+                  WARNING("create window failed! remove task on android!");
+                  window_manager_->remove_task(param->windowId);
+                }
+              } else if (event_type == USER_DESTROY_WINDOW) {
+                window_manager_->erase_task(param->windowId);
+              }
+              delete param;
+              param = nullptr;
             } else {
-	      ERROR("null point param!!");
-	    }
+              ERROR("null point param!!");
+            }
           }
           break;
       }

@@ -265,7 +265,7 @@ anbox::cmds::SessionManager::SessionManager()
         {bridge_connector->socket_file(), "/dev/anbox_bridge"},
         {audio_server->socket_file(), "/dev/anbox_audio"},
         {SystemConfiguration::instance().input_device_dir(), "/dev/input"},
-	{"/tmp/ime_socket","/dev/ime"},
+        {"/tmp/ime_socket","/dev/ime"},
       };
 
       container_configuration.devices = {
