@@ -1,0 +1,133 @@
+diff --git a/src/core/linux/SDL_fcitx.c b/src/core/linux/SDL_fcitx.c
+index 920cb6d..efd2da6 100644
+--- a/src/core/linux/SDL_fcitx.c
++++ b/src/core/linux/SDL_fcitx.c
+@@ -284,11 +284,11 @@ SDL_Fcitx_Reset(void)
+ }
+ 
+ SDL_bool
+-SDL_Fcitx_ProcessKeyEvent(Uint32 keysym, Uint32 keycode)
++SDL_Fcitx_ProcessKeyEvent(Uint32 keysym, Uint32 keycode, Uint32 itype)
+ {
+     Uint32 state = Fcitx_ModState();
+     Uint32 handled = SDL_FALSE;
+-    int type = FCITX_PRESS_KEY;
++    int type = itype;
+     Uint32 event_time = 0;
+ 
+     if (SDL_DBus_CallMethod(fcitx_client.servicename, fcitx_client.icname, FCITX_IC_DBUS_INTERFACE, "ProcessKeyEvent",
+diff --git a/src/core/linux/SDL_fcitx.h b/src/core/linux/SDL_fcitx.h
+index bb725bb..542d5ba 100644
+--- a/src/core/linux/SDL_fcitx.h
++++ b/src/core/linux/SDL_fcitx.h
+@@ -31,7 +31,7 @@ extern SDL_bool SDL_Fcitx_Init(void);
+ extern void SDL_Fcitx_Quit(void);
+ extern void SDL_Fcitx_SetFocus(SDL_bool focused);
+ extern void SDL_Fcitx_Reset(void);
+-extern SDL_bool SDL_Fcitx_ProcessKeyEvent(Uint32 keysym, Uint32 keycode);
++extern SDL_bool SDL_Fcitx_ProcessKeyEvent(Uint32 keysym, Uint32 keycode, Uint32 itype);
+ extern void SDL_Fcitx_UpdateTextRect(SDL_Rect *rect);
+ extern void SDL_Fcitx_PumpEvents(void);
+ 
+diff --git a/src/core/linux/SDL_ime.c b/src/core/linux/SDL_ime.c
+index 8c9a474..6754b4a 100644
+--- a/src/core/linux/SDL_ime.c
++++ b/src/core/linux/SDL_ime.c
+@@ -27,7 +27,7 @@ typedef SDL_bool (*_SDL_IME_Init)();
+ typedef void (*_SDL_IME_Quit)();
+ typedef void (*_SDL_IME_SetFocus)(SDL_bool);
+ typedef void (*_SDL_IME_Reset)();
+-typedef SDL_bool (*_SDL_IME_ProcessKeyEvent)(Uint32, Uint32);
++typedef SDL_bool (*_SDL_IME_ProcessKeyEvent)(Uint32, Uint32, Uint32);
+ typedef void (*_SDL_IME_UpdateTextRect)(SDL_Rect *);
+ typedef void (*_SDL_IME_PumpEvents)();
+ 
+@@ -127,10 +127,10 @@ SDL_IME_Reset(void)
+ }
+ 
+ SDL_bool
+-SDL_IME_ProcessKeyEvent(Uint32 keysym, Uint32 keycode)
++SDL_IME_ProcessKeyEvent(Uint32 keysym, Uint32 keycode, Uint32 itype)
+ {
+     if (SDL_IME_ProcessKeyEvent_Real)
+-        return SDL_IME_ProcessKeyEvent_Real(keysym, keycode);
++        return SDL_IME_ProcessKeyEvent_Real(keysym, keycode, itype);
+ 
+     return SDL_FALSE;
+ }
+diff --git a/src/core/linux/SDL_ime.h b/src/core/linux/SDL_ime.h
+index bc03a1a..d330c18 100644
+--- a/src/core/linux/SDL_ime.h
++++ b/src/core/linux/SDL_ime.h
+@@ -31,7 +31,7 @@ extern SDL_bool SDL_IME_Init(void);
+ extern void SDL_IME_Quit(void);
+ extern void SDL_IME_SetFocus(SDL_bool focused);
+ extern void SDL_IME_Reset(void);
+-extern SDL_bool SDL_IME_ProcessKeyEvent(Uint32 keysym, Uint32 keycode);
++extern SDL_bool SDL_IME_ProcessKeyEvent(Uint32 keysym, Uint32 keycode, Uint32 itype);
+ extern void SDL_IME_UpdateTextRect(SDL_Rect *rect);
+ extern void SDL_IME_PumpEvents(void);
+ 
+diff --git a/src/video/x11/SDL_x11events.c b/src/video/x11/SDL_x11events.c
+index 24e9b0c..34e4c7f 100644
+--- a/src/video/x11/SDL_x11events.c
++++ b/src/video/x11/SDL_x11events.c
+@@ -27,6 +27,7 @@
+ #include <signal.h>
+ #include <unistd.h>
+ #include <limits.h> /* For INT_MAX */
++#include <fcitx/frontend.h>
+ 
+ #include "SDL_x11video.h"
+ #include "SDL_x11touch.h"
+@@ -740,7 +741,7 @@ X11_DispatchEvent(_THIS)
+         /* The window for KeymapNotify, etc events is 0 */
+         if (xevent.type == KeymapNotify) {
+             if (SDL_GetKeyboardFocus() != NULL) {
+-                X11_ReconcileKeyboardState(_this);
++                //X11_ReconcileKeyboardState(_this);
+             }
+         } else if (xevent.type == MappingNotify) {
+             /* Has the keyboard layout changed? */
+@@ -912,7 +913,7 @@ X11_DispatchEvent(_THIS)
+ 
+ #ifdef SDL_USE_IME
+             if(SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE){
+-                handled_by_ime = SDL_IME_ProcessKeyEvent(keysym, keycode);
++                handled_by_ime = SDL_IME_ProcessKeyEvent(keysym, keycode, FCITX_PRESS_KEY);
+             }
+ #endif
+             if (!handled_by_ime) {
+@@ -932,9 +933,32 @@ X11_DispatchEvent(_THIS)
+         /* Key release? */
+     case KeyRelease:{
+             KeyCode keycode = xevent.xkey.keycode;
++            KeySym keysym = NoSymbol;
++            char text[SDL_TEXTINPUTEVENT_TEXT_SIZE];
++            SDL_bool handled_by_ime = SDL_FALSE;
+ 
+ #ifdef DEBUG_XEVENTS
+             printf("window %p: KeyRelease (X11 keycode = 0x%X)\n", data, xevent.xkey.keycode);
++#endif
++#if 1
++            if (videodata->key_layout[keycode] == SDL_SCANCODE_UNKNOWN && keycode) {
++                int min_keycode, max_keycode;
++                X11_XDisplayKeycodes(display, &min_keycode, &max_keycode);
++                keysym = X11_KeyCodeToSym(_this, keycode, xevent.xkey.state >> 13);
++                fprintf(stderr,
++                        "The key you just pressed is not recognized by SDL. To help get this fixed, please report this to the SDL forums/mailing list <https://discourse.libsdl.org/> X11 KeyCode %d (%d), X11 KeySym 0x%lX (%s).\n",
++                        keycode, keycode - min_keycode, keysym,
++                        X11_XKeysymToString(keysym));
++            }
++#endif
++            /* */
++            SDL_zero(text);
++            X11_XLookupString(&xevent.xkey, text, sizeof(text), &keysym, NULL);
++
++#ifdef SDL_USE_IME
++            if(SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE){
++                handled_by_ime = SDL_IME_ProcessKeyEvent(keysym, keycode, FCITX_RELEASE_KEY);
++	    }
+ #endif
+             if (X11_KeyRepeat(display, &xevent)) {
+                 /* We're about to get a repeated key down, ignore the key up */
