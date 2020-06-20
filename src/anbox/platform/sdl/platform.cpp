@@ -131,6 +131,8 @@ Platform::Platform(
 
   event_thread_ = std::thread(&Platform::process_events, this);
   ime_thread_ = std::thread(&Platform::create_ime_socket, this);
+
+  register_event = SDL_RegisterEvents(1);
 }
 
 Platform::~Platform() {
@@ -241,6 +243,28 @@ void Platform::process_events() {
           }
           break;
         default:
+          if (event.type == register_event) {
+            int event_type = event.user.code;
+            manager_window_param* param = (manager_window_param*) event.user.data1;
+            if (param) {
+              if (event_type == USER_CREATE_WINDOW) {
+                auto w = create_window(param->windowId, param->rect, param->title);
+		if (w) {
+		  w->attach();
+		  window_manager_->insert_task(param->windowId, w);
+		} else {
+		  WARNING("create window failed! remove task on android!");
+		  window_manager_->remove_task(param->windowId);
+		}
+	      } else if (event_type == USER_DESTROY_WINDOW) {
+		 window_manager_->erase_task(param->windowId);
+	      }
+	      delete param;
+	      param = nullptr;
+            } else {
+	      ERROR("null point param!!");
+	    }
+          }
           break;
       }
     }

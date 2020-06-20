@@ -51,6 +51,8 @@ class MultiWindowManager : public Manager {
                    const std::int32_t &resize_mode) override;
   void set_focused_task(const Task::Id &task) override;
   void remove_task(const Task::Id &task) override;
+  void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) override;
+  void erase_task(const Task::Id &task) override;
 
  private:
   std::mutex mutex_;
@@ -58,8 +60,6 @@ class MultiWindowManager : public Manager {
   std::shared_ptr<bridge::AndroidApiStub> android_api_stub_;
   std::shared_ptr<application::Database> app_db_;
   std::map<Task::Id, std::shared_ptr<Window>> windows_;
-
-  std::set<Task::Id> need_removed;
 };
 }  // namespace wm
 }  // namespace anbox

@@ -36,6 +36,7 @@ class NullPlatform : public BasePlatform {
   void set_renderer(const std::shared_ptr<Renderer> &renderer) override;
   void set_window_manager(const std::shared_ptr<wm::Manager> &window_manager) override;
   bool supports_multi_window() const override;
+  int get_register_event() const override;
 };
 }  // namespace wm
 }  // namespace anbox
