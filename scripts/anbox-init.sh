@@ -26,6 +26,18 @@ function prepare_filesystem() {
 		chmod 0666 /dev/$f
 	done
 
+	chown system:system /dev/input
+	chmod 0755 /dev/input
+
+	chown system:system /dev/input/event0
+	chmod 0755 /dev/input/event0
+
+	chown system:system /dev/input/event1
+	chmod 0755 /dev/input/event1
+
+	chown system:system /dev/input/event2
+	chmod 0755 /dev/input/event2
+
 	if [ -e "/dev/tun" ] ; then
 		chown system:vpn /dev/tun
 		chmod 0660 /dev/tun
