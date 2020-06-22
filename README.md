@@ -149,6 +149,7 @@ Interesting things to have a look at
  * [Runtime Setup](docs/runtime-setup.md)
  * [Build Android image](docs/build-android.md)
  * [Generate Android emugl source](docs/generate-emugl-source.md)
+ * [Apply SDL patch](docs/apply_SDL_patch.md)
 
 ## Reporting bugs
 
