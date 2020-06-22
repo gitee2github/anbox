@@ -25,7 +25,7 @@ the sources:
 
 ```
 $ cd $HOME/anbox-work
-$ repo init -u https://github.com/anbox/platform_manifests.git -b anbox
+$ repo init -u https://gitee.com/twwang/platform_manifests.git -b master
 $ repo sync -j4
 ```
 
