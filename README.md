@@ -150,6 +150,7 @@ Interesting things to have a look at
  * [Build Android image](docs/build-android.md)
  * [Generate Android emugl source](docs/generate-emugl-source.md)
  * [Apply SDL patch](docs/apply_SDL_patch.md)
+ * [Release notes](docs/release-notes/anbox-release-notes.md)
 
 ## Reporting bugs
 
