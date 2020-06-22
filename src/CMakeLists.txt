@@ -57,10 +57,18 @@ add_library(anbox-protobuf
     anbox/protobuf/anbox_bridge.proto
     anbox/protobuf/anbox_container.proto
     anbox/protobuf/google_protobuf_guard.cpp)
-target_link_libraries(anbox-protobuf
+
+if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64")
+    target_link_libraries(anbox-protobuf
+    ${PROTOBUF_LITE_LIBRARIES}
+    /usr/lib/x86_64-linux-gnu/libasound.so
+    )
+else()
+    target_link_libraries(anbox-protobuf
     ${PROTOBUF_LITE_LIBRARIES}
     /usr/lib/aarch64-linux-gnu/libasound.so
-     )
+    )
+endif()
 
 set(SOURCES
     anbox/android/intent.cpp
