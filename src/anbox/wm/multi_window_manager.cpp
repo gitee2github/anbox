@@ -61,7 +61,7 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
     }
 
     if (window.frame().width() == 0 || window.frame().height() == 0) {
-        continue;
+      continue;
     }
 
     auto title = window.package_name();
@@ -135,11 +135,11 @@ void MultiWindowManager::insert_task(const Task::Id &task, std::shared_ptr<wm::W
 }
 
 void MultiWindowManager::erase_task(const Task::Id &task) {
-  std::lock_guard<std::mutex>l(mutex_);
+  std::lock_guard<std::mutex> l(mutex_);
   auto it = windows_.find(task);
   if (it != windows_.end()) {
     windows_.erase(it);
   }
-} 
+}
 }  // namespace wm
 }  // namespace anbox

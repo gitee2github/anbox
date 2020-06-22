@@ -511,7 +511,6 @@ std::shared_ptr<wm::Window> Platform::create_window(
   auto id = next_window_id();
   auto w = std::make_shared<Window>(renderer_, id, task, shared_from_this(), frame, title, !window_size_immutable_);
   focused_sdl_window_id_ = w->window_id();
-  printf("Insert id:%d, %d\n", id, task);
   windows_.insert({id, w});
   return w;
 }
@@ -524,7 +523,6 @@ void Platform::window_deleted(const Window::Id &id) {
   }
   if (auto window = w->second.lock())
     window_manager_->remove_task(window->task());
-  printf("Remove id:%d\n", id);
   windows_.erase(w);
 }
 
