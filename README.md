@@ -81,6 +81,8 @@ system:
  * libprotobuf
  * protobuf-compiler
  * lxc (>= 3.0)
+ * libasound
+
 
 On an Ubuntu system you can install all build dependencies with the following
 command:
@@ -92,7 +94,7 @@ $ sudo apt install build-essential cmake cmake-data debhelper dbus google-mock \
     libboost-thread-dev libcap-dev libsystemd-dev libegl1-mesa-dev \
     libgles2-mesa-dev libglm-dev libgtest-dev liblxc1 \
     libproperties-cpp-dev libprotobuf-dev libsdl2-dev libsdl2-image-dev lxc-dev \
-    pkg-config protobuf-compiler 
+    pkg-config protobuf-compiler libasound2-dev
 ```
 We recommend Ubuntu 18.04 (bionic) with **GCC 7.x** as your build environment.
 
