@@ -39,6 +39,9 @@ namespace anbox {
 namespace platform {
 namespace sdl {
 Window::Id Window::Invalid{-1};
+const std::map<std::string, Window::window_property> Window::property_map = {
+  {"QQ音乐", Window::HIDE_BACK}
+};
 
 Window::Observer::~Observer() {}
 
@@ -118,6 +121,10 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   lastClickTime = last_update_time;
 
   SDL_ShowWindow(window_);
+  auto property_itr = property_map.find(title);
+  if (property_itr != property_map.end()) {
+    visible_property = property_itr->second;
+  }
 }
 
 Window::~Window() {
@@ -171,32 +178,47 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
       platform_window->initialized = true;
     }
 
-    if (pt->x > 0 && pt->x < button_area_width) {
-      std::shared_ptr<anbox::platform::sdl::Window::Observer> observer_temp = platform_window->observer_;
-      if (observer_temp) {
-        observer_temp->input_key_event(SDL_SCANCODE_AC_BACK, 1);
-        observer_temp->input_key_event(SDL_SCANCODE_AC_BACK, 0);
+    if (pt->x > 0 && pt->x < button_area_width &&
+            ((platform_window->get_property() & HIDE_BACK) != HIDE_BACK)) {
+      std::shared_ptr<anbox::platform::sdl::Window::Observer> observer = platform_window->observer_;
+      if (observer ) {
+        observer->window_wants_focus(platform_window->id());
+        observer->input_key_event(SDL_SCANCODE_AC_BACK, 1);
+        observer->input_key_event(SDL_SCANCODE_AC_BACK, 0);
       }
-      result = SDL_HITTEST_NORMAL;
-    } else if (pt->x > w - button_area_width * button_close && 
-               pt->x < w - button_area_width * (button_close - 1)) {
-      platform_window->close();
-      result = SDL_HITTEST_NORMAL;
-    } else if (pt->x > w - button_area_width * button_maximize && 
-               pt->x < w - button_area_width * (button_maximize - 1)) {
-      platform_window->switch_window_state();
-      result = SDL_HITTEST_NORMAL;
-    } else if (pt->x > w - button_area_width * button_minimize && 
-               pt->x < w - button_area_width * (button_minimize - 1)) {
-      SDL_MinimizeWindow(platform_window->window_);
-      result = SDL_HITTEST_NORMAL;
-    } else if (platform_window->check_db_clicked(pt->x, pt->y)) {
-      platform_window->switch_window_state();
-      result = SDL_HITTEST_NORMAL;
-    } else {
-      result = SDL_HITTEST_DRAGGABLE;
+      return SDL_HITTEST_NORMAL;
     }
-    return result;
+    int btn_cnt = 1;  //button count from right of the titlebar
+    if ((platform_window->get_property() & HIDE_CLOSE) != HIDE_CLOSE) {
+      if (pt->x > w - button_area_width * btn_cnt &&
+              pt->x < w - button_area_width * (btn_cnt - 1)) {
+        platform_window->close();
+        return SDL_HITTEST_NORMAL;
+      }
+      ++btn_cnt;
+    }
+    if ((platform_window->get_property() & HIDE_MAXIMIZE) != HIDE_MAXIMIZE) {
+      if (pt->x > w - button_area_width * btn_cnt &&
+              pt->x < w - button_area_width * (btn_cnt - 1)) {
+        platform_window->switch_window_state();
+        return SDL_HITTEST_NORMAL;
+      }
+      ++btn_cnt;
+    }
+    if ((platform_window->get_property() & HIDE_MINIMIZE) != HIDE_MINIMIZE) {
+      if (pt->x > w - button_area_width * btn_cnt &&
+              pt->x < w - button_area_width * (btn_cnt - 1)) {
+        SDL_MinimizeWindow(platform_window->window_);
+        return SDL_HITTEST_NORMAL;
+      }
+    }
+    if (((platform_window->get_property() & HIDE_MAXIMIZE) != HIDE_MAXIMIZE) &&
+               platform_window->check_db_clicked(pt->x, pt->y)) {
+      platform_window->switch_window_state();
+      return SDL_HITTEST_NORMAL;
+    } else {
+      return SDL_HITTEST_DRAGGABLE;
+    }
   }
 
   return SDL_HITTEST_NORMAL;
