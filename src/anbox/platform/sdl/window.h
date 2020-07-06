@@ -27,6 +27,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <map>
 
 class Renderer;
 
@@ -41,12 +42,15 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   static const long long APP_START_MAX_TIME = 15 * USEC_PER_SEC;
   static const long long timespan_db_click = 500000;
 
-
-  enum button_cnt { // button count number from the right
-    button_close = 1,
-    button_maximize = 2,
-    button_minimize = 3
+  enum window_property{
+    HIDE_BACK     = 0x01,
+    HIDE_MINIMIZE = 0x02,
+    HIDE_MAXIMIZE = 0x04,
+    HIDE_CLOSE    = 0x08,
+    SHOW_ALL      = 0x00
   };
+
+  static const std::map<std::string, window_property> property_map;
 
   class Observer {
    public:
@@ -78,6 +82,9 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   Id id() const;
   std::uint32_t window_id() const;
   Uint32 GetWindowFlags(){return SDL_GetWindowFlags(window_);}
+  inline window_property get_property() {
+      return visible_property;
+  }
 
  private:
   static SDL_HitTestResult on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data);
@@ -96,6 +103,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   int last_point_y{ 0 };
   int last_wnd_x{ 0 };
   int last_wnd_y{ 0 };
+  window_property visible_property{ SHOW_ALL };
 };
 } // namespace sdl
 } // namespace platform
