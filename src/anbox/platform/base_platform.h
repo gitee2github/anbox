@@ -75,6 +75,7 @@ class BasePlatform {
 
   virtual bool supports_multi_window() const = 0;
   virtual int get_register_event() const = 0;
+  virtual std::string ime_socket_file() const = 0;
 };
 
 struct Configuration {

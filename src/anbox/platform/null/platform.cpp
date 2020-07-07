@@ -76,5 +76,10 @@ int NullPlatform::get_register_event() const {
   ERROR("Not implemented");
   return -1;
 }
+
+std::string NullPlatform::ime_socket_file() const {
+  ERROR("Not implemented");
+  return "";
+}
 }  // namespace wm
 }  // namespace anbox
