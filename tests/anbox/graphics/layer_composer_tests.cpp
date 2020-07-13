@@ -59,7 +59,9 @@ TEST(LayerComposer, FindsNoSuitableWindowForLayer) {
       wm::Stack::Id::Freeform,
   };
 
-  wm->apply_window_state_update({single_window}, {});
+  auto window = platform->create_window(single_window.task(), single_window.frame(), single_window.package_name());
+  window->attach();
+  wm->insert_task(single_window.task(), window);
 
   LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
@@ -81,7 +83,7 @@ TEST(LayerComposer, MapsLayersToWindows) {
   platform::Configuration config;
   // The default policy will create a dumb window instance when requested
   // from the manager.
-  auto platform = platform::create(std::string(), nullptr, config);
+  auto platform = platform::create(std::string(""), nullptr, config);
   auto app_db = std::make_shared<application::Database>();
   auto wm = std::make_shared<wm::MultiWindowManager>(platform, nullptr, app_db);
 
@@ -102,8 +104,12 @@ TEST(LayerComposer, MapsLayersToWindows) {
       wm::Task::Id{2},
       wm::Stack::Id::Freeform,
   };
-
-  wm->apply_window_state_update({first_window, second_window}, {});
+  auto window1 = platform->create_window(first_window.task(), first_window.frame(), first_window.package_name());
+  window1->attach();
+  wm->insert_task(first_window.task(), window1);
+  auto window2 = platform->create_window(second_window.task(), second_window.frame(), second_window.package_name());
+  window2->attach();
+  wm->insert_task(second_window.task(), window2);
 
   LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
@@ -146,7 +152,7 @@ TEST(LayerComposer, WindowPartiallyOffscreen) {
   auto app_db = std::make_shared<application::Database>();
   auto wm = std::make_shared<wm::MultiWindowManager>(platform, nullptr, app_db);
 
-  auto window = wm::WindowState{
+  auto single_window = wm::WindowState{
       wm::Display::Id{1},
       true,
       graphics::Rect{-100, -100, 924, 668},
@@ -155,7 +161,9 @@ TEST(LayerComposer, WindowPartiallyOffscreen) {
       wm::Stack::Id::Freeform,
   };
 
-  wm->apply_window_state_update({window}, {});
+  auto window = platform->create_window(single_window.task(), single_window.frame(), single_window.package_name());
+  window->attach();
+  wm->insert_task(single_window.task(), window);
 
   LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
@@ -173,8 +181,8 @@ TEST(LayerComposer, WindowPartiallyOffscreen) {
   };
 
   EXPECT_CALL(*renderer, draw(_, Rect{0, 0,
-                                      window.frame().width(),
-                                      window.frame().height()},
+                                      single_window.frame().width(),
+                                      single_window.frame().height()},
                               expected_renderables))
       .Times(1)
       .WillOnce(Return(true));
@@ -192,7 +200,7 @@ TEST(LayerComposer, PopupShouldNotCauseWindowLayerOffset) {
   auto app_db = std::make_shared<application::Database>();
   auto wm = std::make_shared<wm::MultiWindowManager>(platform, nullptr, app_db);
 
-  auto window = wm::WindowState{
+  auto single_window = wm::WindowState{
       wm::Display::Id{1},
       true,
       graphics::Rect{1120, 270, 2144, 1038},
@@ -201,7 +209,9 @@ TEST(LayerComposer, PopupShouldNotCauseWindowLayerOffset) {
       wm::Stack::Id::Freeform,
   };
 
-  wm->apply_window_state_update({window}, {});
+  auto window = platform->create_window(single_window.task(), single_window.frame(), single_window.package_name());
+  window->attach();
+  wm->insert_task(single_window.task(), window);
 
   LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
@@ -217,13 +227,13 @@ TEST(LayerComposer, PopupShouldNotCauseWindowLayerOffset) {
   };
 
   RenderableList expected_renderables{
-    {"org.anbox.surface.3", 0, 1.0f, {0, 0, 1024, 768}, {0, 0, 1024, 768}},
-    {"org.anbox.surface.3", 1, 1.0f, {784, -24, 1044, 136}, {0, 0, 260, 160}},
+    {"org.anbox.surface.3", 0, 1.0f, {0, 24, 1024, 792}, {0, 0, 1024, 768}},
+    {"org.anbox.surface.3", 1, 1.0f, {784, 0, 1044, 160}, {0, 0, 260, 160}},
   };
 
   EXPECT_CALL(*renderer, draw(_, Rect{0, 0,
-                                      window.frame().width(),
-                                      window.frame().height()},
+                                      single_window.frame().width(),
+                                      single_window.frame().height()},
                               expected_renderables))
       .Times(1)
       .WillOnce(Return(true));
