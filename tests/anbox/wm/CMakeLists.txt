@@ -1,0 +1,1 @@
+ANBOX_ADD_TEST(multi_window_manager_tests multi_window_manager_tests.cpp)
