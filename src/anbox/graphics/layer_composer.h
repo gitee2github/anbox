@@ -40,7 +40,8 @@ class LayerComposer {
   };
 
   LayerComposer(const std::shared_ptr<Renderer> renderer,
-                const std::shared_ptr<Strategy> &strategy);
+                const std::shared_ptr<Strategy> &strategy,
+                const std::shared_ptr<wm::Manager> &wm);
   ~LayerComposer();
 
   void submit_layers(const RenderableList &renderables);
@@ -48,6 +49,7 @@ class LayerComposer {
  private:
   std::shared_ptr<Renderer> renderer_;
   std::shared_ptr<Strategy> strategy_;
+  std::shared_ptr<wm::Manager> wm_;
 };
 }  // namespace graphics
 }  // namespace anbox

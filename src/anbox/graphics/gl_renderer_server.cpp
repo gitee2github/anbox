@@ -76,7 +76,7 @@ GLRendererServer::GLRendererServer(const Config &config, const std::shared_ptr<w
   else
     composer_strategy = std::make_shared<MultiWindowComposerStrategy>(wm);
 
-  composer_ = std::make_shared<LayerComposer>(renderer_, composer_strategy);
+  composer_ = std::make_shared<LayerComposer>(renderer_, composer_strategy, wm);
 
   auto gl_libs = emugl::default_gl_libraries();
   if (config.driver == Config::Driver::Software) {

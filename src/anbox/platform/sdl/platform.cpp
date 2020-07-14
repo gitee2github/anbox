@@ -134,7 +134,10 @@ Platform::Platform(
   event_thread_ = std::thread(&Platform::process_events, this);
   ime_thread_ = std::thread(&Platform::create_ime_socket, this);
 
-  register_event = SDL_RegisterEvents(1);
+  user_window_event = SDL_RegisterEvents(1);
+  if (user_window_event < 0) {
+    FATAL("SDL_RegisterEvents failed and can not recover,please restart service!!");
+  }
 }
 
 Platform::~Platform() {
@@ -245,30 +248,34 @@ void Platform::process_events() {
           }
           break;
         default:
-          if (event.type == register_event) {
-            int event_type = event.user.code;
-            manager_window_param* param = (manager_window_param*) event.user.data1;
-            if (param) {
-              if (event_type == USER_CREATE_WINDOW) {
-                auto w = create_window(param->windowId, param->rect, param->title);
-                if (w) {
-                  w->attach();
-                  window_manager_->insert_task(param->windowId, w);
-                } else {
-                  WARNING("create window failed! remove task on android!");
-                  window_manager_->remove_task(param->windowId);
-                }
-              } else if (event_type == USER_DESTROY_WINDOW) {
-                window_manager_->erase_task(param->windowId);
-              }
-              delete param;
-              param = nullptr;
-            } else {
-              ERROR("null point param!!");
-            }
-          }
+          user_event_function(event);
           break;
       }
+    }
+  }
+}
+
+void Platform::user_event_function(const SDL_Event &event) {
+  if (event.type == user_window_event) {
+    int event_type = event.user.code;
+    manager_window_param* param = (manager_window_param*) event.user.data1;
+    if (param) {
+      if (event_type == USER_CREATE_WINDOW) {
+        auto w = create_window(param->windowId, param->rect, param->title);
+        if (w) {
+          w->attach();
+          window_manager_->insert_task(param->windowId, w);
+        } else {
+          WARNING("create window failed! remove task on android!");
+          window_manager_->remove_task(param->windowId);
+        }
+      } else if (event_type == USER_DESTROY_WINDOW) {
+        window_manager_->erase_task(param->windowId);
+      }
+      delete param;
+      param = nullptr;
+    } else {
+      ERROR("null point param!!");
     }
   }
 }
@@ -598,6 +605,13 @@ std::shared_ptr<audio::Source> Platform::create_audio_source() {
 
 bool Platform::supports_multi_window() const {
   return true;
+}
+
+int Platform::get_user_window_event() const {
+  if (user_window_event < 0) {
+    FATAL("SDL_RegisterEvents failed and can not recover,please restart service!!");
+  }
+  return user_window_event;
 }
 } // namespace sdl
 } // namespace platform

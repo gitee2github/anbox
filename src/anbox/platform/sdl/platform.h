@@ -71,7 +71,8 @@ class Platform : public std::enable_shared_from_this<Platform>,
 
   bool supports_multi_window() const override;
 
-  int get_register_event() const override {return register_event;}
+  int get_user_window_event() const override;
+  void user_event_function(const SDL_Event &event);
   std::string ime_socket_file() const override { return ime_socket_file_; }
 
  private:
@@ -120,7 +121,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   void push_finger_up(int finger_id, std::vector<input::Event> &touch_events);
   void push_finger_motion(int x, int y, int finger_id, std::vector<input::Event> &touch_events);
 
-  int register_event = 0;
+  int user_window_event = 0;
 };
 } // namespace sdl
 } // namespace platform

@@ -72,7 +72,7 @@ bool NullPlatform::supports_multi_window() const {
   return false;
 }
 
-int NullPlatform::get_register_event() const {
+int NullPlatform::get_user_window_event() const {
   ERROR("Not implemented");
   return -1;
 }
