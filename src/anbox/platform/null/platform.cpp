@@ -72,9 +72,14 @@ bool NullPlatform::supports_multi_window() const {
   return false;
 }
 
-int NullPlatform::get_register_event() const {
+int NullPlatform::get_user_window_event() const {
   ERROR("Not implemented");
   return -1;
+}
+
+std::string NullPlatform::ime_socket_file() const {
+  ERROR("Not implemented");
+  return "";
 }
 }  // namespace wm
 }  // namespace anbox

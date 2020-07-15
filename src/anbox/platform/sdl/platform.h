@@ -39,9 +39,6 @@ class Manager;
 } // namespace wm
 namespace platform {
 namespace sdl {
-
-static const char IME_SOCKET_PATH[] = "/tmp/ime_socket";
-
 class Platform : public std::enable_shared_from_this<Platform>,
                        public platform::BasePlatform,
                        public Window::Observer {
@@ -74,7 +71,9 @@ class Platform : public std::enable_shared_from_this<Platform>,
 
   bool supports_multi_window() const override;
 
-  int get_register_event() const override {return register_event;}
+  int get_user_window_event() const override;
+  void user_event_function(const SDL_Event &event);
+  std::string ime_socket_file() const override { return ime_socket_file_; }
 
  private:
   void process_events();
@@ -105,6 +104,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   bool window_size_immutable_ = false;
   std::uint32_t focused_sdl_window_id_ = 0;
   Configuration config_;
+  std::string ime_socket_file_;
 
   static const int MAX_FINGERS = 10;
   static const int MAX_TRACKING_ID = 10;
@@ -121,7 +121,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   void push_finger_up(int finger_id, std::vector<input::Event> &touch_events);
   void push_finger_motion(int x, int y, int finger_id, std::vector<input::Event> &touch_events);
 
-  int register_event = 0;
+  int user_window_event = 0;
 };
 } // namespace sdl
 } // namespace platform
