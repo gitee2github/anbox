@@ -1,0 +1,803 @@
+diff --git a/src/com/android/settings/CredentialStorage.java b/src/com/android/settings/CredentialStorage.java
+index eed380bae4..4397f1ff45 100644
+--- a/src/com/android/settings/CredentialStorage.java
++++ b/src/com/android/settings/CredentialStorage.java
+@@ -475,7 +475,7 @@ public final class CredentialStorage extends Activity {
+             finish();
+         } else if (requestCode == CONFIRM_CLEAR_SYSTEM_CREDENTIAL_REQUEST) {
+             if (resultCode == Activity.RESULT_OK) {
+-                new ResetKeyStoreAndKeyChain().execute();
++                new ResetKeyStoreAndKeyChain().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                 return;
+             }
+             // failed confirmation, bail
+diff --git a/src/com/android/settings/CryptKeeper.java b/src/com/android/settings/CryptKeeper.java
+index 4214343ef7..91601e49a5 100644
+--- a/src/com/android/settings/CryptKeeper.java
++++ b/src/com/android/settings/CryptKeeper.java
+@@ -532,10 +532,10 @@ public class CryptKeeper extends Activity implements TextView.OnEditorActionList
+                     }
+ 
+                 }
+-            }.execute();
++            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         } else if (!mValidationRequested) {
+             // We're supposed to be encrypted, but no validation has been done.
+-            new ValidationTask().execute((Void[]) null);
++            new ValidationTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, (Void[]) null);
+             mValidationRequested = true;
+         }
+     }
+@@ -728,7 +728,7 @@ public class CryptKeeper extends Activity implements TextView.OnEditorActionList
+         public void onPatternDetected(List<LockPatternView.Cell> pattern) {
+             mLockPatternView.setEnabled(false);
+             if (pattern.size() >= MIN_LENGTH_BEFORE_REPORT) {
+-                new DecryptTask().execute(LockPatternUtils.patternToString(pattern));
++                new DecryptTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, LockPatternUtils.patternToString(pattern));
+             } else {
+                 // Allow user to make as many of these as they want.
+                 fakeUnlockAttempt(mLockPatternView);
+@@ -892,7 +892,7 @@ public class CryptKeeper extends Activity implements TextView.OnEditorActionList
+             setBackFunctionality(false);
+ 
+             if (password.length() >= LockPatternUtils.MIN_LOCK_PATTERN_SIZE) {
+-                new DecryptTask().execute(password);
++                new DecryptTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, password);
+             } else {
+                 // Allow user to make as many of these as they want.
+                 fakeUnlockAttempt(mPasswordEntry);
+diff --git a/src/com/android/settings/DevelopmentSettings.java b/src/com/android/settings/DevelopmentSettings.java
+index a77f7b1062..b4574c1f15 100644
+--- a/src/com/android/settings/DevelopmentSettings.java
++++ b/src/com/android/settings/DevelopmentSettings.java
+@@ -2219,7 +2219,7 @@ public class DevelopmentSettings extends RestrictedSettingsFragment
+     void pokeSystemProperties() {
+         if (!mDontPokeProperties) {
+             //noinspection unchecked
+-            (new SystemPropPoker()).execute();
++            (new SystemPropPoker()).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
+diff --git a/src/com/android/settings/MasterClearConfirm.java b/src/com/android/settings/MasterClearConfirm.java
+index 393b76a31f..ecd939c816 100644
+--- a/src/com/android/settings/MasterClearConfirm.java
++++ b/src/com/android/settings/MasterClearConfirm.java
+@@ -101,7 +101,7 @@ public class MasterClearConfirm extends OptionsMenuFragment {
+                         mOldOrientation = getActivity().getRequestedOrientation();
+                         getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+                     }
+-                }.execute();
++                }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+             } else {
+                 doMasterClear();
+             }
+diff --git a/src/com/android/settings/SaveChosenLockWorkerBase.java b/src/com/android/settings/SaveChosenLockWorkerBase.java
+index 7ce7a9064b..7912372d5b 100644
+--- a/src/com/android/settings/SaveChosenLockWorkerBase.java
++++ b/src/com/android/settings/SaveChosenLockWorkerBase.java
+@@ -85,7 +85,7 @@ abstract class SaveChosenLockWorkerBase extends Fragment {
+         if (mBlocking) {
+             finish(saveAndVerifyInBackground());
+         } else {
+-            new Task().execute();
++            new Task().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
+diff --git a/src/com/android/settings/SettingsActivity.java b/src/com/android/settings/SettingsActivity.java
+index 9245003de7..334412f9b9 100644
+--- a/src/com/android/settings/SettingsActivity.java
++++ b/src/com/android/settings/SettingsActivity.java
+@@ -455,6 +455,12 @@ public class SettingsActivity extends SettingsDrawerActivity
+             return false;
+         }
+ 
++        try {
++            Class.forName("android.os.AsyncTask");
++        } catch (ClassNotFoundException e) {
++            e.printStackTrace();
++        }
++
+         MenuInflater inflater = getMenuInflater();
+         inflater.inflate(R.menu.options_menu, menu);
+ 
+@@ -624,7 +630,7 @@ public class SettingsActivity extends SettingsDrawerActivity
+                         mInitialTitleResId, mInitialTitle, false);
+             } else {
+                 // No UP affordance if we are displaying the main Dashboard
+-                mDisplayHomeAsUpEnabled = false;
++                mDisplayHomeAsUpEnabled = true;
+                 // Show Search affordance
+                 mDisplaySearch = true;
+                 mInitialTitleResId = R.string.dashboard_title;
+@@ -1040,12 +1046,12 @@ public class SettingsActivity extends SettingsDrawerActivity
+         // Generally the items that are will be changing from these updates will
+         // not be in the top list of tiles, so run it in the background and the
+         // SettingsDrawerActivity will pick up on the updates automatically.
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 doUpdateTilesList();
+             }
+-        });
++        }).start();
+     }
+ 
+     private void doUpdateTilesList() {
+diff --git a/src/com/android/settings/TrustedCredentialsSettings.java b/src/com/android/settings/TrustedCredentialsSettings.java
+index 92b7f6bc34..63d5320858 100644
+--- a/src/com/android/settings/TrustedCredentialsSettings.java
++++ b/src/com/android/settings/TrustedCredentialsSettings.java
+@@ -418,7 +418,7 @@ public class TrustedCredentialsSettings extends OptionsMenuFragment
+         }
+ 
+         public void load() {
+-            mData.new AliasLoader().execute();
++            mData.new AliasLoader().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+ 
+         public void remove(CertHolder certHolder) {
+@@ -950,7 +950,7 @@ public class TrustedCredentialsSettings extends OptionsMenuFragment
+ 
+     @Override
+     public void removeOrInstallCert(CertHolder certHolder) {
+-        new AliasOperation(certHolder).execute();
++        new AliasOperation(certHolder).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+     }
+ 
+     @Override
+diff --git a/src/com/android/settings/UserCredentialsSettings.java b/src/com/android/settings/UserCredentialsSettings.java
+index c264ff7318..54aab44a55 100644
+--- a/src/com/android/settings/UserCredentialsSettings.java
++++ b/src/com/android/settings/UserCredentialsSettings.java
+@@ -93,7 +93,7 @@ public class UserCredentialsSettings extends OptionsMenuFragment implements OnIt
+ 
+     protected void refreshItems() {
+         if (isAdded()) {
+-            new AliasLoader().execute();
++            new AliasLoader().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
+@@ -143,7 +143,7 @@ public class UserCredentialsSettings extends OptionsMenuFragment implements OnIt
+                                     admin);
+                         } else {
+                             new RemoveCredentialsTask(getContext(), getTargetFragment())
+-                                    .execute(item.alias);
++                                    .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, item.alias);
+                         }
+                         dialog.dismiss();
+                     }
+diff --git a/src/com/android/settings/applications/InstalledAppDetails.java b/src/com/android/settings/applications/InstalledAppDetails.java
+index 977f0b01bb..45ffce5cf4 100755
+--- a/src/com/android/settings/applications/InstalledAppDetails.java
++++ b/src/com/android/settings/applications/InstalledAppDetails.java
+@@ -344,8 +344,8 @@ public class InstalledAppDetails extends AppInfoBase
+                     ChartDataLoader.buildArgs(getTemplate(getContext()), app),
+                     mDataCallbacks);
+         }
+-        new BatteryUpdater().execute();
+-        new MemoryUpdater().execute();
++        new BatteryUpdater().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
++        new MemoryUpdater().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         updateDynamicPrefs();
+     }
+ 
+@@ -489,7 +489,7 @@ public class InstalledAppDetails extends AppInfoBase
+                     mDisableAfterUninstall = false;
+                     new DisableChanger(this, mAppEntry.info,
+                             PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER)
+-                            .execute((Object)null);
++                            .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, (Object)null);
+                 }
+                 // continue with following operations
+             case REQUEST_REMOVE_DEVICE_ADMIN:
+@@ -641,7 +641,7 @@ public class InstalledAppDetails extends AppInfoBase
+                                 // Disable the app
+                                 new DisableChanger(InstalledAppDetails.this, mAppEntry.info,
+                                         PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER)
+-                                .execute((Object)null);
++                                .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, (Object)null);
+                             }
+                         })
+                         .setNegativeButton(R.string.dlg_cancel, null)
+@@ -793,7 +793,7 @@ public class InstalledAppDetails extends AppInfoBase
+                 } else {
+                     new DisableChanger(this, mAppEntry.info,
+                             PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
+-                                    .execute((Object) null);
++                                    .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, (Object)null);
+                 }
+             } else if ((mAppEntry.info.flags & ApplicationInfo.FLAG_INSTALLED) == 0) {
+                 uninstallPkg(packageName, true, false);
+diff --git a/src/com/android/settings/applications/ManageApplications.java b/src/com/android/settings/applications/ManageApplications.java
+index 1594e23af8..5a973727da 100644
+--- a/src/com/android/settings/applications/ManageApplications.java
++++ b/src/com/android/settings/applications/ManageApplications.java
+@@ -30,6 +30,7 @@ import android.os.Handler;
+ import android.os.LocaleList;
+ import android.os.UserHandle;
+ import android.os.UserManager;
++import android.os.AsyncTask;
+ import android.preference.PreferenceFrameLayout;
+ import android.text.TextUtils;
+ import android.util.ArraySet;
+@@ -1263,7 +1264,7 @@ public class ManageApplications extends InstrumentedFragment
+                                 userId);
+                         return intents != null && intents.size() != 0;
+                     }
+-                }.execute();
++                }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+             }
+         }
+     }
+diff --git a/src/com/android/settings/applications/NotificationApps.java b/src/com/android/settings/applications/NotificationApps.java
+index 0d88dc46e1..0042c169ff 100644
+--- a/src/com/android/settings/applications/NotificationApps.java
++++ b/src/com/android/settings/applications/NotificationApps.java
+@@ -17,6 +17,7 @@ package com.android.settings.applications;
+ import android.app.Activity;
+ import android.content.Context;
+ import android.content.pm.ApplicationInfo;
++import android.os.AsyncTask;
+ import com.android.settings.R;
+ import com.android.settings.dashboard.SummaryLoader;
+ import com.android.settings.notification.NotificationBackend;
+@@ -53,7 +54,7 @@ public class NotificationApps extends ManageApplications {
+                         return mNotificationBackend.getNotificationsBanned(info.packageName,
+                                 info.uid);
+                     }
+-                }.execute();
++                }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+             }
+         }
+ 
+diff --git a/src/com/android/settings/applications/ResetAppsHelper.java b/src/com/android/settings/applications/ResetAppsHelper.java
+index ddcb244ede..e434977eec 100644
+--- a/src/com/android/settings/applications/ResetAppsHelper.java
++++ b/src/com/android/settings/applications/ResetAppsHelper.java
+@@ -108,7 +108,7 @@ public class ResetAppsHelper implements DialogInterface.OnClickListener,
+         if (mResetDialog != dialog) {
+             return;
+         }
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 List<ApplicationInfo> apps = mPm.getInstalledApplications(
+@@ -144,7 +144,7 @@ public class ResetAppsHelper implements DialogInterface.OnClickListener,
+                     }
+                 }
+             }
+-        });
++        }).start();
+     }
+ 
+     private boolean isNonEnableableFallback(String packageName) {
+diff --git a/src/com/android/settings/dashboard/DashboardSummary.java b/src/com/android/settings/dashboard/DashboardSummary.java
+index 4a9f2c5b90..1495da1250 100644
+--- a/src/com/android/settings/dashboard/DashboardSummary.java
++++ b/src/com/android/settings/dashboard/DashboardSummary.java
+@@ -218,7 +218,7 @@ public class DashboardSummary extends InstrumentedFragment
+         }
+ 
+         // recheck to see if any suggestions have been changed.
+-        new SuggestionLoader().execute();
++        new SuggestionLoader().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+     }
+ 
+     @Override
+diff --git a/src/com/android/settings/dashboard/SearchResultsSummary.java b/src/com/android/settings/dashboard/SearchResultsSummary.java
+index 38f17e3ef2..6834efc63d 100644
+--- a/src/com/android/settings/dashboard/SearchResultsSummary.java
++++ b/src/com/android/settings/dashboard/SearchResultsSummary.java
+@@ -385,7 +385,7 @@ public class SearchResultsSummary extends InstrumentedFragment {
+             setSuggestionsCursor(null);
+         } else {
+             mUpdateSuggestionsTask = new UpdateSuggestionsTask();
+-            mUpdateSuggestionsTask.execute(mQuery);
++            mUpdateSuggestionsTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, mQuery);
+         }
+     }
+ 
+@@ -396,7 +396,7 @@ public class SearchResultsSummary extends InstrumentedFragment {
+             setResultsCursor(null);
+         } else {
+             mUpdateSearchResultsTask = new UpdateSearchResultsTask();
+-            mUpdateSearchResultsTask.execute(mQuery);
++            mUpdateSearchResultsTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, mQuery);
+         }
+     }
+ 
+diff --git a/src/com/android/settings/dashboard/conditional/ConditionManager.java b/src/com/android/settings/dashboard/conditional/ConditionManager.java
+index 691821a776..90aae6bdfb 100644
+--- a/src/com/android/settings/dashboard/conditional/ConditionManager.java
++++ b/src/com/android/settings/dashboard/conditional/ConditionManager.java
+@@ -62,7 +62,7 @@ public class ConditionManager {
+             ConditionLoader loader = new ConditionLoader();
+             loader.onPostExecute(loader.doInBackground());
+         } else {
+-            new ConditionLoader().execute();
++            new ConditionLoader().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
+diff --git a/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java b/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java
+index 1eb409bdbe..5b27faa25b 100644
+--- a/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java
++++ b/src/com/android/settings/deviceinfo/PrivateVolumeSettings.java
+@@ -36,6 +36,7 @@ import android.os.storage.StorageEventListener;
+ import android.os.storage.StorageManager;
+ import android.os.storage.VolumeInfo;
+ import android.os.storage.VolumeRecord;
++import android.os.AsyncTask;
+ import android.provider.DocumentsContract;
+ import android.provider.Settings;
+ import android.support.v7.preference.Preference;
+@@ -436,7 +437,7 @@ public class PrivateVolumeSettings extends SettingsPreferenceFragment {
+                 RenameFragment.show(this, mVolume);
+                 return true;
+             case R.id.storage_mount:
+-                new MountTask(context, mVolume).execute();
++                new MountTask(context, mVolume).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                 return true;
+             case R.id.storage_unmount:
+                 args.putString(VolumeInfo.EXTRA_VOLUME_ID, mVolume.getId());
+diff --git a/src/com/android/settings/deviceinfo/PrivateVolumeUnmount.java b/src/com/android/settings/deviceinfo/PrivateVolumeUnmount.java
+index 7032a1d457..462c85a276 100644
+--- a/src/com/android/settings/deviceinfo/PrivateVolumeUnmount.java
++++ b/src/com/android/settings/deviceinfo/PrivateVolumeUnmount.java
+@@ -20,6 +20,7 @@ import android.os.Bundle;
+ import android.os.storage.DiskInfo;
+ import android.os.storage.StorageManager;
+ import android.os.storage.VolumeInfo;
++import android.os.AsyncTask;
+ import android.text.TextUtils;
+ import android.view.LayoutInflater;
+ import android.view.View;
+@@ -64,7 +65,7 @@ public class PrivateVolumeUnmount extends SettingsPreferenceFragment {
+     private final OnClickListener mConfirmListener = new OnClickListener() {
+         @Override
+         public void onClick(View v) {
+-            new UnmountTask(getActivity(), mVolume).execute();
++            new UnmountTask(getActivity(), mVolume).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+             getActivity().finish();
+         }
+     };
+diff --git a/src/com/android/settings/deviceinfo/PublicVolumeSettings.java b/src/com/android/settings/deviceinfo/PublicVolumeSettings.java
+index eee7673489..ed1d12d71f 100644
+--- a/src/com/android/settings/deviceinfo/PublicVolumeSettings.java
++++ b/src/com/android/settings/deviceinfo/PublicVolumeSettings.java
+@@ -28,6 +28,7 @@ import android.os.storage.StorageEventListener;
+ import android.os.storage.StorageManager;
+ import android.os.storage.VolumeInfo;
+ import android.os.storage.VolumeRecord;
++import android.os.AsyncTask;
+ import android.provider.DocumentsContract;
+ import android.support.v7.preference.Preference;
+ import android.support.v7.preference.PreferenceScreen;
+@@ -217,7 +218,7 @@ public class PublicVolumeSettings extends SettingsPreferenceFragment {
+     public boolean onPreferenceTreeClick(Preference pref) {
+         final Context context = getActivity();
+         if (pref == mMount) {
+-            new MountTask(context, mVolume).execute();
++            new MountTask(context, mVolume).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         } else if (pref == mFormatPublic) {
+             final Intent intent = new Intent(context, StorageWizardFormatConfirm.class);
+             intent.putExtra(DiskInfo.EXTRA_DISK_ID, mDisk.getId());
+@@ -236,7 +237,7 @@ public class PublicVolumeSettings extends SettingsPreferenceFragment {
+     private final View.OnClickListener mUnmountListener = new View.OnClickListener() {
+         @Override
+         public void onClick(View v) {
+-            new UnmountTask(getActivity(), mVolume).execute();
++            new UnmountTask(getActivity(), mVolume).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     };
+ 
+diff --git a/src/com/android/settings/deviceinfo/StorageSettings.java b/src/com/android/settings/deviceinfo/StorageSettings.java
+index 7757efce66..018767f028 100644
+--- a/src/com/android/settings/deviceinfo/StorageSettings.java
++++ b/src/com/android/settings/deviceinfo/StorageSettings.java
+@@ -439,7 +439,7 @@ public class StorageSettings extends SettingsPreferenceFragment implements Index
+                         return;
+                     }
+ 
+-                    new MountTask(context, vol).execute();
++                    new MountTask(context, vol).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                 }
+             });
+             builder.setNegativeButton(R.string.cancel, null);
+diff --git a/src/com/android/settings/deviceinfo/StorageUnmountReceiver.java b/src/com/android/settings/deviceinfo/StorageUnmountReceiver.java
+index 095cf15af4..2ced9158bc 100644
+--- a/src/com/android/settings/deviceinfo/StorageUnmountReceiver.java
++++ b/src/com/android/settings/deviceinfo/StorageUnmountReceiver.java
+@@ -21,6 +21,7 @@ import android.content.Context;
+ import android.content.Intent;
+ import android.os.storage.StorageManager;
+ import android.os.storage.VolumeInfo;
++import android.os.AsyncTask;
+ import android.util.Log;
+ 
+ import com.android.settings.deviceinfo.StorageSettings.UnmountTask;
+@@ -35,7 +36,7 @@ public class StorageUnmountReceiver extends BroadcastReceiver {
+         final String volId = intent.getStringExtra(VolumeInfo.EXTRA_VOLUME_ID);
+         final VolumeInfo vol = storage.findVolumeById(volId);
+         if (vol != null) {
+-            new UnmountTask(context, vol).execute();
++            new UnmountTask(context, vol).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         } else {
+             Log.w(TAG, "Missing volume " + volId);
+         }
+diff --git a/src/com/android/settings/deviceinfo/StorageVolumePreference.java b/src/com/android/settings/deviceinfo/StorageVolumePreference.java
+index 2ef42fa7b3..93a78959de 100644
+--- a/src/com/android/settings/deviceinfo/StorageVolumePreference.java
++++ b/src/com/android/settings/deviceinfo/StorageVolumePreference.java
+@@ -22,6 +22,7 @@ import android.graphics.Color;
+ import android.graphics.drawable.Drawable;
+ import android.os.storage.StorageManager;
+ import android.os.storage.VolumeInfo;
++import android.os.AsyncTask;
+ import android.support.v7.preference.Preference;
+ import android.support.v7.preference.PreferenceViewHolder;
+ import android.text.format.Formatter;
+@@ -125,7 +126,7 @@ public class StorageVolumePreference extends Preference {
+     private final View.OnClickListener mUnmountListener = new OnClickListener() {
+         @Override
+         public void onClick(View v) {
+-            new UnmountTask(getContext(), mVolume).execute();
++            new UnmountTask(getContext(), mVolume).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     };
+ }
+diff --git a/src/com/android/settings/deviceinfo/StorageWizardFormatProgress.java b/src/com/android/settings/deviceinfo/StorageWizardFormatProgress.java
+index 42b727d2bc..4112e85941 100644
+--- a/src/com/android/settings/deviceinfo/StorageWizardFormatProgress.java
++++ b/src/com/android/settings/deviceinfo/StorageWizardFormatProgress.java
+@@ -70,7 +70,7 @@ public class StorageWizardFormatProgress extends StorageWizardBase {
+         if (mTask == null) {
+             mTask = new PartitionTask();
+             mTask.setActivity(this);
+-            mTask.execute();
++            mTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         } else {
+             mTask.setActivity(this);
+         }
+diff --git a/src/com/android/settings/deviceinfo/StorageWizardMigrate.java b/src/com/android/settings/deviceinfo/StorageWizardMigrate.java
+index 148282f1ad..816e3af621 100644
+--- a/src/com/android/settings/deviceinfo/StorageWizardMigrate.java
++++ b/src/com/android/settings/deviceinfo/StorageWizardMigrate.java
+@@ -17,6 +17,7 @@
+ package com.android.settings.deviceinfo;
+ 
+ import android.content.Intent;
++import android.os.AsyncTask;
+ import android.os.Bundle;
+ import android.os.storage.DiskInfo;
+ import android.widget.CompoundButton;
+@@ -61,7 +62,7 @@ public class StorageWizardMigrate extends StorageWizardBase {
+         };
+ 
+         mEstimate.copyFrom(getIntent());
+-        mEstimate.execute();
++        mEstimate.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+     }
+ 
+     private final OnCheckedChangeListener mRadioListener = new OnCheckedChangeListener() {
+diff --git a/src/com/android/settings/deviceinfo/StorageWizardMigrateConfirm.java b/src/com/android/settings/deviceinfo/StorageWizardMigrateConfirm.java
+index a102eda775..fc1ffc92cf 100644
+--- a/src/com/android/settings/deviceinfo/StorageWizardMigrateConfirm.java
++++ b/src/com/android/settings/deviceinfo/StorageWizardMigrateConfirm.java
+@@ -18,6 +18,7 @@ package com.android.settings.deviceinfo;
+ 
+ import android.content.Intent;
+ import android.content.pm.PackageManager;
++import android.os.AsyncTask;
+ import android.os.Bundle;
+ import android.os.storage.DiskInfo;
+ import android.os.storage.StorageManager;
+@@ -68,7 +69,7 @@ public class StorageWizardMigrateConfirm extends StorageWizardBase {
+         };
+ 
+         mEstimate.copyFrom(getIntent());
+-        mEstimate.execute();
++        mEstimate.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+ 
+         getNextButton().setText(R.string.storage_wizard_migrate_confirm_next);
+     }
+diff --git a/src/com/android/settings/fuelgauge/BatterySaverSettings.java b/src/com/android/settings/fuelgauge/BatterySaverSettings.java
+index e19f6837f5..7795e86223 100644
+--- a/src/com/android/settings/fuelgauge/BatterySaverSettings.java
++++ b/src/com/android/settings/fuelgauge/BatterySaverSettings.java
+@@ -176,13 +176,13 @@ public class BatterySaverSettings extends SettingsPreferenceFragment
+     private final Runnable mStartMode = new Runnable() {
+         @Override
+         public void run() {
+-            AsyncTask.execute(new Runnable() {
++            new Thread(new Runnable() {
+                 @Override
+                 public void run() {
+                     if (DEBUG) Log.d(TAG, "Starting low power mode from settings");
+                     trySetPowerSaveMode(true);
+                 }
+-            });
++            }).start();
+         }
+     };
+ 
+diff --git a/src/com/android/settings/notification/NotificationAccessSettings.java b/src/com/android/settings/notification/NotificationAccessSettings.java
+index d81bc0e748..fda34743bb 100644
+--- a/src/com/android/settings/notification/NotificationAccessSettings.java
++++ b/src/com/android/settings/notification/NotificationAccessSettings.java
+@@ -93,13 +93,13 @@ public class NotificationAccessSettings extends ManagedServiceSettings {
+     }
+ 
+     private static void deleteRules(final Context context, final String pkg) {
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 final NotificationManager mgr = context.getSystemService(NotificationManager.class);
+                 mgr.removeAutomaticZenRules(pkg);
+             }
+-        });
++        }).start();
+     }
+ 
+     public class FriendlyWarningDialogFragment extends DialogFragment {
+diff --git a/src/com/android/settings/notification/OtherSoundSettings.java b/src/com/android/settings/notification/OtherSoundSettings.java
+index 5fdb83a612..b598523e29 100644
+--- a/src/com/android/settings/notification/OtherSoundSettings.java
++++ b/src/com/android/settings/notification/OtherSoundSettings.java
+@@ -101,7 +101,7 @@ public class OtherSoundSettings extends SettingsPreferenceFragment implements In
+             TYPE_SYSTEM, KEY_TOUCH_SOUNDS, System.SOUND_EFFECTS_ENABLED, DEFAULT_ON) {
+         @Override
+         protected boolean setSetting(final Context context, final int value) {
+-            AsyncTask.execute(new Runnable() {
++            new Thread(new Runnable() {
+                 @Override
+                 public void run() {
+                     final AudioManager am =
+@@ -112,7 +112,7 @@ public class OtherSoundSettings extends SettingsPreferenceFragment implements In
+                         am.unloadSoundEffects();
+                     }
+                 }
+-            });
++            }).start();
+             return super.setSetting(context, value);
+         }
+     };
+diff --git a/src/com/android/settings/notification/SoundSettings.java b/src/com/android/settings/notification/SoundSettings.java
+index 30dd129a46..83c328a995 100644
+--- a/src/com/android/settings/notification/SoundSettings.java
++++ b/src/com/android/settings/notification/SoundSettings.java
+@@ -365,7 +365,7 @@ public class SoundSettings extends SettingsPreferenceFragment implements Indexab
+     }
+ 
+     private void lookupRingtoneNames() {
+-        AsyncTask.execute(mLookupRingtoneNames);
++        new Thread(mLookupRingtoneNames).start();
+     }
+ 
+     private final Runnable mLookupRingtoneNames = new Runnable() {
+diff --git a/src/com/android/settings/notification/ZenAccessSettings.java b/src/com/android/settings/notification/ZenAccessSettings.java
+index 638972e055..c262c940aa 100644
+--- a/src/com/android/settings/notification/ZenAccessSettings.java
++++ b/src/com/android/settings/notification/ZenAccessSettings.java
+@@ -170,23 +170,23 @@ public class ZenAccessSettings extends EmptyTextSettings {
+     }
+ 
+     private static void setAccess(final Context context, final String pkg, final boolean access) {
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 final NotificationManager mgr = context.getSystemService(NotificationManager.class);
+                 mgr.setNotificationPolicyAccessGranted(pkg, access);
+             }
+-        });
++        }).start();
+     }
+ 
+     private static void deleteRules(final Context context, final String pkg) {
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 final NotificationManager mgr = context.getSystemService(NotificationManager.class);
+                 mgr.removeAutomaticZenRules(pkg);
+             }
+-        });
++        }).start();
+     }
+ 
+     private final class SettingObserver extends ContentObserver {
+diff --git a/src/com/android/settings/notification/ZenModeAutomationSettings.java b/src/com/android/settings/notification/ZenModeAutomationSettings.java
+index 1fdba616a6..1415a7f584 100644
+--- a/src/com/android/settings/notification/ZenModeAutomationSettings.java
++++ b/src/com/android/settings/notification/ZenModeAutomationSettings.java
+@@ -294,7 +294,7 @@ public class ZenModeAutomationSettings extends ZenModeSettingsBase {
+             try {
+                 ApplicationInfo info = mPm.getApplicationInfo(rule.getOwner().getPackageName(), 0);
+                 LoadIconTask task = new LoadIconTask(this);
+-                task.execute(info);
++                task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, info);
+                 setSummary(computeRuleSummary(rule, isSystemRule, info.loadLabel(mPm)));
+             } catch (PackageManager.NameNotFoundException e) {
+                 setIcon(R.drawable.ic_label);
+diff --git a/src/com/android/settings/notification/ZenRuleSelectionDialog.java b/src/com/android/settings/notification/ZenRuleSelectionDialog.java
+index 9de9a60327..2f03865cf8 100644
+--- a/src/com/android/settings/notification/ZenRuleSelectionDialog.java
++++ b/src/com/android/settings/notification/ZenRuleSelectionDialog.java
+@@ -103,7 +103,7 @@ public abstract class ZenRuleSelectionDialog {
+                     R.layout.zen_rule_type, null, false);
+ 
+             LoadIconTask task = new LoadIconTask((ImageView) v.findViewById(R.id.icon));
+-            task.execute(info);
++            task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, info);
+             ((TextView) v.findViewById(R.id.title)).setText(ri.title);
+             if (!ri.isSystem) {
+                 TextView subtitle = (TextView) v.findViewById(R.id.subtitle);
+@@ -218,4 +218,4 @@ public abstract class ZenRuleSelectionDialog {
+             }
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/com/android/settings/search/Index.java b/src/com/android/settings/search/Index.java
+index ccedd627c4..03932f442a 100644
+--- a/src/com/android/settings/search/Index.java
++++ b/src/com/android/settings/search/Index.java
+@@ -290,7 +290,7 @@ public class Index {
+ 
+     public long addSavedQuery(String query){
+         final SaveSearchQueryTask task = new SaveSearchQueryTask();
+-        task.execute(query);
++        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, query);
+         try {
+             return task.get();
+         } catch (InterruptedException e) {
+@@ -303,7 +303,7 @@ public class Index {
+     }
+ 
+     public void update() {
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 final Intent intent = new Intent(SearchIndexablesContract.PROVIDER_INTERFACE);
+@@ -326,7 +326,7 @@ public class Index {
+                 mDataToProcess.fullIndex = true;
+                 updateInternal();
+             }
+-        });
++        }).start();
+     }
+ 
+     private boolean addIndexablesFromRemoteProvider(String packageName, String authority) {
+@@ -492,7 +492,7 @@ public class Index {
+         }
+         res.context = mContext;
+         res.enabled = includeInSearchResults;
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 if (rebuild) {
+@@ -503,18 +503,18 @@ public class Index {
+                 updateInternal();
+                 res.enabled = false;
+             }
+-        });
++        }).start();
+     }
+ 
+     public void updateFromSearchIndexableData(SearchIndexableData data) {
+-        AsyncTask.execute(new Runnable() {
++        new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 addIndexableData(data);
+                 mDataToProcess.forceUpdate = true;
+                 updateInternal();
+             }
+-        });
++        }).start();
+     }
+ 
+     private SQLiteDatabase getReadableDatabase() {
+@@ -549,7 +549,7 @@ public class Index {
+         synchronized (mDataToProcess) {
+             final UpdateIndexTask task = new UpdateIndexTask();
+             UpdateData copy = mDataToProcess.copy();
+-            task.execute(copy);
++            task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, copy);
+             mDataToProcess.clear();
+         }
+     }
+diff --git a/src/com/android/settings/users/AppRestrictionsFragment.java b/src/com/android/settings/users/AppRestrictionsFragment.java
+index f72bf9e97b..f560b6517e 100644
+--- a/src/com/android/settings/users/AppRestrictionsFragment.java
++++ b/src/com/android/settings/users/AppRestrictionsFragment.java
+@@ -266,7 +266,7 @@ public class AppRestrictionsFragment extends SettingsPreferenceFragment implemen
+ 
+         mAppListChanged = false;
+         if (mAppLoadingTask == null || mAppLoadingTask.getStatus() == AsyncTask.Status.FINISHED) {
+-            mAppLoadingTask = new AppLoadingTask().execute();
++            mAppLoadingTask = new AppLoadingTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
+@@ -283,7 +283,7 @@ public class AppRestrictionsFragment extends SettingsPreferenceFragment implemen
+                     mHelper.applyUserAppsStates(AppRestrictionsFragment.this);
+                     return null;
+                 }
+-            }.execute();
++            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
+diff --git a/src/com/android/settings/users/UserSettings.java b/src/com/android/settings/users/UserSettings.java
+index 4e0d8faa08..7711f43af1 100644
+--- a/src/com/android/settings/users/UserSettings.java
++++ b/src/com/android/settings/users/UserSettings.java
+@@ -343,7 +343,7 @@ public class UserSettings extends SettingsPreferenceFragment
+                 }
+                 return user.name;
+             }
+-        }.execute();
++        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+     }
+ 
+     private void finishLoadProfile(String profileName) {
+@@ -909,7 +909,7 @@ public class UserSettings extends SettingsPreferenceFragment
+                 }
+                 return null;
+             }
+-        }.execute(missingIcons);
++        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, missingIcons);
+     }
+ 
+     private Drawable getEncircledDefaultIcon() {
+diff --git a/src/com/android/settings/widget/SettingsAppWidgetProvider.java b/src/com/android/settings/widget/SettingsAppWidgetProvider.java
+index 38fed94a67..4662017d9e 100644
+--- a/src/com/android/settings/widget/SettingsAppWidgetProvider.java
++++ b/src/com/android/settings/widget/SettingsAppWidgetProvider.java
+@@ -401,7 +401,7 @@ public class SettingsAppWidgetProvider extends AppWidgetProvider {
+                     wifiManager.setWifiEnabled(desiredState);
+                     return null;
+                 }
+-            }.execute();
++            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+ 
+         @Override
+@@ -477,7 +477,7 @@ public class SettingsAppWidgetProvider extends AppWidgetProvider {
+                     sLocalBluetoothAdapter.setBluetoothEnabled(desiredState);
+                     return null;
+                 }
+-            }.execute();
++            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+ 
+         @Override
+@@ -589,7 +589,7 @@ public class SettingsAppWidgetProvider extends AppWidgetProvider {
+                         result ? STATE_ENABLED : STATE_DISABLED);
+                     updateWidget(context);
+                 }
+-            }.execute();
++            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
+@@ -648,7 +648,7 @@ public class SettingsAppWidgetProvider extends AppWidgetProvider {
+                         result ? STATE_ENABLED : STATE_DISABLED);
+                     updateWidget(context);
+                 }
+-            }.execute();
++            }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+         }
+     }
+ 
