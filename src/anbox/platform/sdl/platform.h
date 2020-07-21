@@ -113,7 +113,9 @@ class Platform : public std::enable_shared_from_this<Platform>,
   int last_slot = -1;
   int ime_fd_ = -1;
   int ime_socket_ = -1;
+  int input_flag = 0;
   void create_ime_socket();
+  bool text_input_fliter(const char* text);
 
   int find_touch_slot(int id);
   void push_slot(std::vector<input::Event> &touch_events, int slot);

@@ -204,7 +204,6 @@ void Platform::create_ime_socket() {
 
 void Platform::process_events() {
   event_thread_running_ = true;
-  int flag = 0;
 
   while (event_thread_running_) {
     SDL_Event event;
@@ -223,12 +222,12 @@ void Platform::process_events() {
           }
           break;
         case SDL_KEYDOWN:
-          flag = 1;
+          input_flag = 1;
           if (keyboard_)
             process_input_event(event);
           break;
         case SDL_KEYUP:
-          flag = 0;
+          input_flag = 0;
           if (keyboard_)
             process_input_event(event);
           break;
@@ -243,7 +242,7 @@ void Platform::process_events() {
           break;
         case SDL_TEXTINPUT:
           WARNING("Input Event TEXT=%s TYPE=%d WINDOWID=%d", event.text.text, event.type, event.text.windowID);
-          if (flag == 0 && ime_fd_) {
+          if (text_input_fliter(event.text.text)) {
             send(ime_fd_, event.text.text, strlen(event.text.text), 0);
           }
           break;
@@ -253,6 +252,11 @@ void Platform::process_events() {
       }
     }
   }
+}
+
+bool Platform::text_input_fliter(const char* text) {
+  return text[0] > 0x7f || (input_flag == 0 &&
+          ((text[0] <= 'Z' && text[0] >= 'A') || (text[0] <= 'z' && text[0] >= 'a')));
 }
 
 void Platform::user_event_function(const SDL_Event &event) {
