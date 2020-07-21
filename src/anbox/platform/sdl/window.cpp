@@ -131,6 +131,11 @@ Window::~Window() {
   if (window_) SDL_DestroyWindow(window_);
 }
 
+bool Window::title_event_filter(int point_y) {
+  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
+  return point_y < top_drag_area_height;
+}
+
 SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data) {
   auto platform_window = reinterpret_cast<Window*>(data);
 

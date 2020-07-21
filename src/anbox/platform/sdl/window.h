@@ -72,6 +72,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
          bool resizable);
   ~Window();
 
+  bool title_event_filter(int y) override;
   void process_event(const SDL_Event &event);
   bool check_min_state() {return SDL_GetWindowFlags(window_) & SDL_WINDOW_MINIMIZED;}
  

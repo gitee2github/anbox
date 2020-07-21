@@ -298,6 +298,14 @@ void Platform::process_input_event(const SDL_Event &event) {
   switch (event.type) {
     // Mouse
     case SDL_MOUSEBUTTONDOWN:
+      for (auto &iter : windows_) {
+        if (auto w = iter.second.lock()) {
+          if (w->window_id() == event.window.windowID &&
+                  w->title_event_filter(event.button.y)) {
+            return;
+          }
+        }
+      }
       if (config_.no_touch_emulation) {
         mouse_events.push_back({EV_KEY, BTN_LEFT, 1});
       } else {
