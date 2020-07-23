@@ -374,6 +374,12 @@ HandleType Renderer::createColorBuffer(int p_width, int p_height,
     ret = genHandle();
     m_colorbuffers[ret].cb = cb;
     m_colorbuffers[ret].refcount = 1;
+
+    RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    int tid = tInfo->m_tid;
+    if (tid > 0) {
+        m_procOwnedColorBuffers[tid].insert(ret);    
+    }
   }
   return ret;
 }
@@ -406,7 +412,15 @@ HandleType Renderer::createRenderContext(int p_config, HandleType p_share,
     ret = genHandle();
     m_contexts[ret] = rctx;
     RenderThreadInfo *tinfo = RenderThreadInfo::get();
-    tinfo->m_contextSet.insert(ret);
+    int tid = tinfo->m_tid;
+    // The new emulator manages render contexts per guest process.
+    // Fall back to per-thread management if the system image does not
+    // support it.
+    if (tid > 0) {
+        m_procOwnedRenderContext[tid].insert(ret);
+    } else {
+        tinfo->m_contextSet.insert(ret);
+    }
   }
   return ret;
 }
@@ -476,8 +490,19 @@ void Renderer::DestroyRenderContext(HandleType p_context) {
 
   m_contexts.erase(p_context);
   RenderThreadInfo *tinfo = RenderThreadInfo::get();
-  if (tinfo->m_contextSet.empty()) return;
-  tinfo->m_contextSet.erase(p_context);
+    int tid = tinfo->m_tid;
+    // The new emulator manages render contexts per guest process.
+    // Fall back to per-thread management if the system image does not
+    // support it.
+    //if (tinfo->m_contextSet.empty()) return;
+    if (tid > 0) {
+        auto ite = m_procOwnedRenderContext.find(tid);
+        if (ite != m_procOwnedRenderContext.end()) {
+            ite->second.erase(p_context);
+        }
+    } else {
+        tinfo->m_contextSet.erase(p_context);
+    }
 }
 
 void Renderer::DestroyWindowSurface(HandleType p_surface) {
@@ -492,6 +517,7 @@ void Renderer::DestroyWindowSurface(HandleType p_surface) {
 }
 
 int Renderer::openColorBuffer(HandleType p_colorbuffer) {
+  RenderThreadInfo *tInfo = RenderThreadInfo::get();
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
@@ -501,12 +527,14 @@ int Renderer::openColorBuffer(HandleType p_colorbuffer) {
     return -1;
   }
   (*c).second.refcount++;
+    int tid = tInfo->m_tid;
+    if (tid > 0) {
+        m_procOwnedColorBuffers[tid].insert(p_colorbuffer);
+    }
   return 0;
 }
 
-void Renderer::closeColorBuffer(HandleType p_colorbuffer) {
-  std::unique_lock<std::mutex> l(m_lock);
-
+void Renderer::closeColorBufferLocked(HandleType p_colorbuffer) {
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // This is harmless: it is normal for guest system to issue
@@ -518,6 +546,62 @@ void Renderer::closeColorBuffer(HandleType p_colorbuffer) {
   if (--(*c).second.refcount == 0) {
     m_colorbuffers.erase(c);
   }
+}
+
+void Renderer::closeColorBuffer(HandleType p_colorbuffer)
+{
+    std::unique_lock<std::mutex> l(m_lock);
+    closeColorBufferLocked(p_colorbuffer);
+    RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    int tid = tInfo->m_tid;
+    if (tid > 0) {
+        auto ite = m_procOwnedColorBuffers.find(tid);
+        if (ite != m_procOwnedColorBuffers.end()) {
+            ite->second.erase(p_colorbuffer);
+        }
+    }
+}
+
+void Renderer::cleanupProcGLObjects(int tid) {
+    std::unique_lock<std::mutex> l(m_lock);
+    // Clean up color buffers.
+    // A color buffer needs to be closed as many times as it is opened by
+    // the guest process, to give the correct reference count.
+    // (Note that a color buffer can be shared across guest processes.)
+    {
+        auto procIte = m_procOwnedColorBuffers.find(tid);
+        if (procIte != m_procOwnedColorBuffers.end()) {
+            for (auto cb: procIte->second) {
+                closeColorBufferLocked(cb);
+            }
+            m_procOwnedColorBuffers.erase(procIte);
+        }
+    }
+
+    // Clean up EGLImage handles
+    {
+        // Bind context before potentially triggering any gl calls
+        ScopedBind bind(this);
+        auto procIte = m_procOwnedEGLImages.find(tid);
+        if (procIte != m_procOwnedEGLImages.end()) {
+            for (auto eglImg : procIte->second) {
+                s_egl.eglDestroyImageKHR(m_eglDisplay,
+                            reinterpret_cast<EGLImageKHR>(reinterpret_cast<HandleType>(eglImg)));
+            }
+            m_procOwnedEGLImages.erase(procIte);
+        }
+    }
+
+    // Cleanup render contexts
+    {
+        auto procIte = m_procOwnedRenderContext.find(tid);
+        if (procIte != m_procOwnedRenderContext.end()) {
+            for (auto ctx: procIte->second) {
+                m_contexts.erase(ctx);
+            }
+            m_procOwnedRenderContext.erase(procIte);
+        }
+    }
 }
 
 bool Renderer::flushWindowSurfaceColorBuffer(HandleType p_surface) {
@@ -708,6 +792,7 @@ HandleType Renderer::createClientImage(HandleType context, EGLenum target,
   RenderContextPtr ctx(NULL);
 
   if (context) {
+    std::unique_lock<std::mutex> l(m_lock);
     RenderContextMap::iterator r(m_contexts.find(context));
     if (r == m_contexts.end()) {
       // bad context handle
@@ -722,12 +807,33 @@ HandleType Renderer::createClientImage(HandleType context, EGLenum target,
       s_egl.eglCreateImageKHR(m_eglDisplay, eglContext, target,
                               reinterpret_cast<EGLClientBuffer>(buffer), NULL);
 
-  return static_cast<HandleType>(reinterpret_cast<uintptr_t>(image));
+    HandleType imgHnd = static_cast<HandleType>(reinterpret_cast<uintptr_t>(image));
+
+    RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    int tid = tInfo->m_tid;
+    if (tid > 0) {
+        std::unique_lock<std::mutex> l(m_lock);
+        m_procOwnedEGLImages[tid].insert(imgHnd);
+    }
+    return imgHnd;
 }
 
 EGLBoolean Renderer::destroyClientImage(HandleType image) {
-  return s_egl.eglDestroyImageKHR(m_eglDisplay,
+  EGLBoolean ret = s_egl.eglDestroyImageKHR(m_eglDisplay,
                                   reinterpret_cast<EGLImageKHR>(image));
+    if (!ret) return false;
+    RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    int tid = tInfo->m_tid;
+    if (tid > 0) {
+        std::unique_lock<std::mutex> l(m_lock);
+        m_procOwnedEGLImages[tid].erase(image);
+        // We don't explicitly call m_procOwnedEGLImages.erase(puid) when the size
+        // reaches 0, since it could go between zero and one many times in the
+        // lifetime of a process.
+        // It will be cleaned up by cleanupProcGLObjects(puid) when the process is
+        // dead.
+    }
+    return true;
 }
 
 //

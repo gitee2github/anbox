@@ -32,6 +32,9 @@
 #include <map>
 #include <mutex>
 
+#include <unordered_map>
+#include <unordered_set>
+
 #include <stdint.h>
 
 // Type of handles, a.k.a. "object names" in the GL specification.
@@ -43,9 +46,17 @@ struct ColorBufferRef {
   uint32_t refcount;  // number of client-side references
 };
 typedef std::map<HandleType, RenderContextPtr> RenderContextMap;
+typedef std::unordered_set<HandleType> RenderContextSet;
+typedef std::unordered_map<int, RenderContextSet> ProcOwnedRenderContexts;
+
 typedef std::map<HandleType, std::pair<WindowSurfacePtr, HandleType>>
     WindowSurfaceMap;
 typedef std::map<HandleType, ColorBufferRef> ColorBufferMap;
+typedef std::unordered_multiset<HandleType> ColorBufferSet;
+typedef std::unordered_map<int, ColorBufferSet> ProcOwnedColorBuffers;
+
+typedef std::unordered_set<HandleType> EGLImageSet;
+typedef std::unordered_map<int, EGLImageSet> ProcOwnedEGLImages;
 
 // A structure used to list the capabilities of the underlying EGL
 // implementation that the FrameBuffer instance depends on.
@@ -160,7 +171,9 @@ class Renderer : public anbox::graphics::Renderer {
   // createColorBuffer(). Note that if the reference count reaches 0,
   // the instance is destroyed automatically.
   void closeColorBuffer(HandleType p_colorbuffer);
+    void closeColorBufferLocked(HandleType p_colorbuffer);
 
+    void cleanupProcGLObjects(int tid);
   // Equivalent for eglMakeCurrent() for the current display.
   // |p_context|, |p_drawSurface| and |p_readSurface| are the handle values
   // of the context, the draw surface and the read surface, respectively.
@@ -309,5 +322,9 @@ class Renderer : public anbox::graphics::Renderer {
   static const GLchar* const vshader;
   static const GLchar* const defaultFShader;
   static const GLchar* const alphaFShader;
+
+  ProcOwnedColorBuffers m_procOwnedColorBuffers;
+  ProcOwnedEGLImages m_procOwnedEGLImages;
+  ProcOwnedRenderContexts m_procOwnedRenderContext;
 };
 #endif
