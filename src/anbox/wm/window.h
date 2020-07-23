@@ -55,6 +55,7 @@ class Window {
   void update_frame(const graphics::Rect &frame);
 
   virtual EGLNativeWindowType native_handle() const;
+  virtual bool title_event_filter(int y);
   graphics::Rect frame() const;
   Task::Id task() const;
   std::string title() const;
