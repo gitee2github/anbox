@@ -226,4 +226,8 @@ TextureDraw::~TextureDraw() {
   if (mVertexShader) {
     s_gles2.glDeleteShader(mVertexShader);
   }
+  if (mProgram) {
+    s_gles2.glDeleteProgram(mProgram);
+    mProgram = 0;
+  }
 }

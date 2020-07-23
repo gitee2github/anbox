@@ -79,7 +79,6 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   void update_state(const wm::WindowState::List &states) override;
 
   bool check_db_clicked(int x, int y);
-  EGLNativeWindowType native_handle() const override;
   Id id() const;
   std::uint32_t window_id() const;
   Uint32 GetWindowFlags(){return SDL_GetWindowFlags(window_);}
@@ -97,7 +96,6 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   Id id_;
   std::shared_ptr<Observer> observer_;
   EGLNativeDisplayType native_display_;
-  EGLNativeWindowType native_window_;
   SDL_Window *window_;
   long long lastClickTime{ 0 };
   int last_point_x{ 0 };

@@ -27,6 +27,10 @@
 #include "external/android-emugl/host/include/OpenGLESDispatch/GLESv1Dispatch.h"
 #include "external/android-emugl/host/include/OpenGLESDispatch/GLESv2Dispatch.h"
 
+#include <stdio.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+
 #define STREAM_BUFFER_SIZE 4 * 1024 * 1024
 
 RenderThread::RenderThread(const std::shared_ptr<Renderer> &renderer, IOStream *stream, std::mutex &m)
@@ -44,6 +48,7 @@ void RenderThread::forceStop() { m_stream->forceStop(); }
 
 intptr_t RenderThread::main() {
   RenderThreadInfo threadInfo;
+  threadInfo.m_tid = syscall(SYS_gettid);
   ChecksumCalculatorThreadInfo threadChecksumInfo;
 
   threadInfo.m_glDec.initGL(gles1_dispatch_get_proc_func, NULL);
@@ -98,5 +103,6 @@ intptr_t RenderThread::main() {
   renderer_->drainWindowSurface();
   renderer_->drainRenderContext();
 
+  renderer_->cleanupProcGLObjects(threadInfo.m_tid);
   return 0;
 }

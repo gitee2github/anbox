@@ -54,13 +54,16 @@ class Window {
   virtual void update_state(const WindowState::List &states);
   void update_frame(const graphics::Rect &frame);
 
-  virtual EGLNativeWindowType native_handle() const;
   virtual bool title_event_filter(int y);
+  void set_native_handle(const EGLNativeWindowType &handle);
+  EGLNativeWindowType native_handle() const;
+
   graphics::Rect frame() const;
   Task::Id task() const;
   std::string title() const;
 
  private:
+  EGLNativeWindowType native_window_;
   std::shared_ptr<Renderer> renderer_;
   Task::Id task_;
   graphics::Rect frame_;

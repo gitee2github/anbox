@@ -59,6 +59,8 @@ struct RenderThreadInfo {
   ThreadContextSet m_contextSet;
   // all the window surfaces that are created by this render thread
   WindowSurfaceSet m_windowSet;
+  // The unique id of owner guest process of this render thread
+  int m_tid = 0;
 };
 
 #endif
