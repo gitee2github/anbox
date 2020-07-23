@@ -22,7 +22,7 @@
 namespace anbox {
 namespace wm {
 Window::Window(const std::shared_ptr<Renderer> &renderer, const Task::Id &task, const graphics::Rect &frame, const std::string &title)
-    : renderer_(renderer), task_(task), frame_(frame), title_(title) {}
+    : renderer_(renderer), task_(task), frame_(frame), title_(title), native_window_(0) {}
 
 Window::~Window() {
   release();
@@ -37,12 +37,14 @@ void Window::update_frame(const graphics::Rect &frame) {
 
   frame_ = frame;
 }
-
+void Window::set_native_handle(const EGLNativeWindowType &handle) {
+  native_window_ = handle;
+}
 Task::Id Window::task() const { return task_; }
 
 graphics::Rect Window::frame() const { return frame_; }
 
-EGLNativeWindowType Window::native_handle() const { return 0; }
+EGLNativeWindowType Window::native_handle() const { return native_window_; }
 
 std::string Window::title() const { return title_; }
 

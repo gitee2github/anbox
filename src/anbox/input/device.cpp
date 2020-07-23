@@ -80,6 +80,7 @@ void Device::send_events(const std::vector<Event> &events) {
     connections_->at(n)->send(reinterpret_cast<const char *>(data),
                               events.size() * sizeof(struct CompatEvent));
   }
+  delete[] data;
 }
 
 void Device::set_name(const std::string &name) {

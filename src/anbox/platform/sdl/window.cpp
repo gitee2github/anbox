@@ -55,8 +55,7 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
       id_(id),
       lastClickTime(0),
       observer_(observer),
-      native_display_(0),
-      native_window_(0) {
+      native_display_(0){
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
 
   // NOTE: We don't furce GL initialization of the window as this will
@@ -85,6 +84,7 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
 
   SDL_Surface *icon = IMG_Load(strPath.c_str());
   SDL_SetWindowIcon(window_, icon);
+  SDL_FreeSurface(icon);
 
   SDL_SysWMinfo info;
   SDL_VERSION(&info.version);
@@ -93,20 +93,20 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
 #if defined(X11_SUPPORT)
     case SDL_SYSWM_X11:
       native_display_ = static_cast<EGLNativeDisplayType>(info.info.x11.display);
-      native_window_ = static_cast<EGLNativeWindowType>(info.info.x11.window);
+      set_native_handle(static_cast<EGLNativeWindowType>(info.info.x11.window));
       break;
 #endif
 #if defined(WAYLAND_SUPPORT)
     case SDL_SYSWM_WAYLAND:
       native_display_ = reinterpret_cast<EGLNativeDisplayType>(info.info.wl.display);
-      native_window_ = reinterpret_cast<EGLNativeWindowType>(info.info.wl.surface);
+      set_native_handle(reinterpret_cast<EGLNativeWindowType>(info.info.wl.surface));
       break;
 #endif
 #if defined(MIR_SUPPORT)
     case SDL_SYSWM_MIR: {
       native_display_ = static_cast<EGLNativeDisplayType>(mir_connection_get_egl_native_display(info.info.mir.connection));
       auto buffer_stream = mir_surface_get_buffer_stream(info.info.mir.surface);
-      native_window_ = reinterpret_cast<EGLNativeWindowType>(mir_buffer_stream_get_egl_native_window(buffer_stream));
+      set_native_handle(reinterpret_cast<EGLNativeWindowType>(mir_buffer_stream_get_egl_native_window(buffer_stream)));
       break;
     }
 #endif
@@ -300,8 +300,6 @@ void Window::process_event(const SDL_Event &event) {
       break;
   }
 }
-
-EGLNativeWindowType Window::native_handle() const { return native_window_; }
 
 Window::Id Window::id() const { return id_; }
 
