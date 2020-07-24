@@ -363,13 +363,21 @@ void Platform::process_input_event(const SDL_Event &event) {
     // Keyboard
     case SDL_KEYDOWN: {
       const auto code = KeycodeConverter::convert(event.key.keysym.scancode);
-      if (code == KEY_RESERVED || code == KEY_ESC) break;
+      if (code == KEY_RESERVED) break;
+      if (code == KEY_ESC) {
+        input_key_event(SDL_SCANCODE_AC_BACK, 1);
+        break;
+      }
       keyboard_events.push_back({EV_KEY, code, 1});
       break;
     }
     case SDL_KEYUP: {
       const auto code = KeycodeConverter::convert(event.key.keysym.scancode);
-      if (code == KEY_RESERVED || code == KEY_ESC) break;
+      if (code == KEY_RESERVED) break;
+      if (code == KEY_ESC) {
+        input_key_event(SDL_SCANCODE_AC_BACK, 0);
+        break;
+      }
       keyboard_events.push_back({EV_KEY, code, 0});
       break;
     }
