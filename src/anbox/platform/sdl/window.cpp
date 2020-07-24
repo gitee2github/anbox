@@ -40,7 +40,8 @@ namespace platform {
 namespace sdl {
 Window::Id Window::Invalid{-1};
 const std::map<std::string, Window::window_property> Window::property_map = {
-  {"QQ音乐", Window::HIDE_BACK}
+  {"QQ音乐", Window::HIDE_BACK},
+  {"喜马拉雅", Window::HIDE_MAXIMIZE}
 };
 
 Window::Observer::~Observer() {}
