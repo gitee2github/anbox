@@ -265,6 +265,9 @@ void Platform::user_event_function(const SDL_Event &event) {
     manager_window_param* param = (manager_window_param*) event.user.data1;
     if (param) {
       if (event_type == USER_CREATE_WINDOW) {
+        if (windows_.find(param->windowId) != windows_.end()) {
+          return;
+        }
         auto w = create_window(param->windowId, param->rect, param->title);
         if (w) {
           w->attach();
