@@ -107,6 +107,10 @@ void AudioSink::read_data(std::uint8_t *buffer, int size) {
 
 void AudioSink::write_data(const std::vector<std::uint8_t> &data) {
   std::unique_lock<std::mutex> l(lock_);
+  if(data.size() == 0) {
+    WARNING("AudioSink::write_data with 0 size");
+    return;
+  }
   if (!connect_audio()) {
     WARNING("Audio server not connected, skipping %d bytes", data.size());
     return;
