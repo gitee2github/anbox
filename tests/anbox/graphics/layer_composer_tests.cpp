@@ -63,7 +63,7 @@ TEST(LayerComposer, FindsNoSuitableWindowForLayer) {
   window->attach();
   wm->insert_task(single_window.task(), window);
 
-  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm), wm);
+  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
   // A single renderable which has a different task id then the window we know
   // about
@@ -111,7 +111,7 @@ TEST(LayerComposer, MapsLayersToWindows) {
   window2->attach();
   wm->insert_task(second_window.task(), window2);
 
-  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm), wm);
+  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
   // A single renderable which has a different task id then the window we know
   // about
@@ -165,7 +165,7 @@ TEST(LayerComposer, WindowPartiallyOffscreen) {
   window->attach();
   wm->insert_task(single_window.task(), window);
 
-  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm), wm);
+  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
   // Window is build out of two layers where one is placed inside the other
   // but the layer covering the whole window is placed with its top left
@@ -213,7 +213,7 @@ TEST(LayerComposer, PopupShouldNotCauseWindowLayerOffset) {
   window->attach();
   wm->insert_task(single_window.task(), window);
 
-  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm), wm);
+  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
 
   // Having two renderables where the second smaller one overlaps the bigger
   // one and goes a bit offscreen. This should be still placed correctly and

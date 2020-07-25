@@ -42,7 +42,6 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
 
   std::map<Task::Id, WindowState::List> task_updates;
 
-  lock_window();
   for (const auto &window : updated) {
     // Ignore all windows which are not part of the freeform task stack
     if (window.stack() != Stack::Id::Freeform) continue;
@@ -57,7 +56,6 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
       task_updates.insert({window.task(), {window}});
     else
       task_updates[window.task()].push_back(window);
-
     if (find_window_for_task(window.task()) != nullptr) {
       continue;
     }
@@ -82,36 +80,36 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
     }
   }
 
-  // As final step we process all windows we need to remove as they
-  // got killed on the other side. We need to respect here that we
-  // also get removals for windows which are part of a task which is
-  // still in use by other windows.
-  for (auto it = windows_.begin(); it != windows_.end(); ++it) {
-    auto w = task_updates.find(it->first);
-    if (w != task_updates.end()) {
-      it->second->update_state(w->second);
-      continue;
-    }
-    auto platform_window = it->second;
-    platform_window->release();
+  {
+    // As final step we process all windows we need to remove as they
+    // got killed on the other side. We need to respect here that we
+    // also get removals for windows which are part of a task which is
+    // still in use by other windows.
+    std::lock_guard<std::mutex> l(mutex_);
+    for (auto it = windows_.begin(); it != windows_.end(); ++it) {
+      auto w = task_updates.find(it->first);
+      if (w != task_updates.end()) {
+        it->second->update_state(w->second);
+        continue;
+      }
+      auto platform_window = it->second;
+      platform_window->release();
 
-    if (auto p = platform_.lock()) {
-      SDL_Event event;
-      SDL_memset(&event, 0, sizeof(event));
-      event.type = p->get_user_window_event();
-      event.user.code = platform::USER_DESTROY_WINDOW;
-      event.user.data1 = new(std::nothrow) platform::manager_window_param(it->first, graphics::Rect(0, 0, 0, 0), "");
-      event.user.data2 = 0;
-      SDL_PushEvent(&event);
+      if (auto p = platform_.lock()) {
+        SDL_Event event;
+        SDL_memset(&event, 0, sizeof(event));
+        event.type = p->get_user_window_event();
+        event.user.code = platform::USER_DESTROY_WINDOW;
+        event.user.data1 = new(std::nothrow) platform::manager_window_param(it->first, graphics::Rect(0, 0, 0, 0), "");
+        event.user.data2 = 0;
+        SDL_PushEvent(&event);
+      }
     }
   }
-  unlock_window();
 }
 
 std::shared_ptr<Window> MultiWindowManager::find_window_for_task(const Task::Id &task) {
-  /* note: use lock_window() first and get window, when you finish using window,
-   * use unlock_window()
-   */
+  std::lock_guard<std::mutex> l(mutex_);
   for (const auto &w : windows_) {
     if (w.second->task() == task) return w.second;
   }
@@ -132,22 +130,16 @@ void MultiWindowManager::remove_task(const Task::Id &task) {
 }
 
 void MultiWindowManager::insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) {
-  lock_window();
-
+  std::lock_guard<std::mutex> l(mutex_);
   windows_.insert({ task, pt });
-
-  unlock_window();
 }
 
 void MultiWindowManager::erase_task(const Task::Id &task) {
-  lock_window();
-
+  std::lock_guard<std::mutex> l(mutex_);
   auto it = windows_.find(task);
   if (it != windows_.end()) {
     windows_.erase(it);
   }
-
-  unlock_window();
 }
 }  // namespace wm
 }  // namespace anbox

@@ -44,11 +44,6 @@ class Manager {
 
   // FIXME only applies for the multi-window case
   virtual std::shared_ptr<Window> find_window_for_task(const Task::Id &task) = 0;
-  virtual void lock_window() {}
-  virtual void unlock_window() {}
-
- private:
-  std::mutex mutex_for_renderer_; // protect layer_composer to use window, preventing it to be released.
 };
 }  // namespace wm
 }  // namespace anbox

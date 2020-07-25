@@ -22,23 +22,18 @@
 
 namespace anbox {
 namespace graphics {
-LayerComposer::LayerComposer(const std::shared_ptr<Renderer> renderer, const std::shared_ptr<Strategy> &strategy,
-                             const std::shared_ptr<wm::Manager> &wm)
-    : renderer_(renderer), strategy_(strategy), wm_(wm) {}
+LayerComposer::LayerComposer(const std::shared_ptr<Renderer> renderer, const std::shared_ptr<Strategy> &strategy)
+    : renderer_(renderer), strategy_(strategy) {}
 
 LayerComposer::~LayerComposer() {}
 
 void LayerComposer::submit_layers(const RenderableList &renderables) {
-  wm_->lock_window(); // prevent window in win_layer to be released in other thread
-
   auto win_layers = strategy_->process_layers(renderables);
   for (auto &w : win_layers) {
     renderer_->draw(w.first->native_handle(),
                     Rect{0, 0, w.first->frame().width(), w.first->frame().height()},
                     w.second);
   }
-
-  wm_->unlock_window();
 }
 }  // namespace graphics
 }  // namespace anbox

@@ -53,8 +53,6 @@ class MultiWindowManager : public Manager {
   void remove_task(const Task::Id &task) override;
   void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) override;
   void erase_task(const Task::Id &task) override;
-  virtual void lock_window_() { mutex_.lock(); }
-  virtual void unlock_window() { mutex_.unlock(); }
 
  private:
   std::mutex mutex_;
