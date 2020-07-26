@@ -16,14 +16,14 @@
  */
 
 #include "anbox/platform/alsa/audio_source.h"
-#include "anbox/logger.h"
-#include<alsa/asoundlib.h>
-#include<stdio.h>
-#include<time.h>
-#include <sys/select.h>
+#include <stdio.h>
+#include <time.h>
 #include <stdexcept>
-#include<string>
+#include <string>
 #include <boost/throw_exception.hpp>
+#include <alsa/asoundlib.h>
+#include <sys/select.h>
+#include "anbox/logger.h"
 #include "anbox/audio/client_info.h"
 
 namespace anbox{
@@ -37,18 +37,13 @@ AudioSource::AudioSource()
     is_opened = false;
 }
 
-AudioSource::~AudioSource()
-{
-    DEBUG("audio source disconstructor is called");
-}
-
 bool AudioSource::connect_audio()
 {
     clock_t start = clock();
-    int res;
+    int res = 0;
     std::string audioName = malsahelper.get_usb_audio_device_name();
     if (audioName == "default") {
-         return false;
+        return false;
     }
     res = malsahelper.open_pcm_device(audioName.c_str(), SND_PCM_STREAM_CAPTURE, 0);
     if (res == 0) {
@@ -88,8 +83,10 @@ void AudioSource::set_socket_connection(std::shared_ptr<network::SocketConnectio
 
 void AudioSource::process_pcm_data()
 {
+    std::string fail = "fail";
     if (!is_opened) {
         ERROR("pcm devices isn't opened");
+        mConnection->send(fail.c_str(), fail.size());
         return;
     }
     snd_pcm_uframes_t  period_frames = malsahelper.get_period_frames();
@@ -97,11 +94,11 @@ void AudioSource::process_pcm_data()
     char* dataBuf = new (std::nothrow) char [period_frames_bytes];
     if (dataBuf == nullptr) {
         ERROR("get memory fail !!!");
+        mConnection->send(fail.c_str(), fail.size());
         return;
     }
     memset(dataBuf, 0, period_frames_bytes);
     const char* tmp = nullptr;
-    std::string fail = "fail";
     if ((malsahelper.pcm_read(dataBuf, period_frames)) != period_frames) {
         mConnection->send(fail.c_str(), fail.size());
         ERROR("read pcm data failed !!!");
@@ -117,11 +114,11 @@ void AudioSource::process_pcm_data()
 /**
 *  response recording request from android audio hal
 */
-void AudioSource::read_data (const std::vector<std::uint8_t> &data)
+void AudioSource::read_data(const std::vector<std::uint8_t> &data)
 {
+    DEBUG("recording ,pid = %d,tid = %d", pid, tid);
     enum audio::RecordCommand cmd = static_cast<enum audio::RecordCommand>(data[0]); // parse request type from hal
     std::unique_lock<std::mutex> l(lock_);
-    DEBUG("recording ,pid = %d,tid = %d", pid, tid);
     int res = 0;
     std::string str;
     switch (cmd) {
@@ -140,7 +137,7 @@ void AudioSource::read_data (const std::vector<std::uint8_t> &data)
     }
 }
 
-void AudioSource::sleep_ms (unsigned int secs) const
+void AudioSource::sleep_ms(unsigned int secs) const
 {
     const long secs2usec = 1000000;
     struct timeval tval;
@@ -148,7 +145,6 @@ void AudioSource::sleep_ms (unsigned int secs) const
     tval.tv_usec = (secs * CLOCKS_PER_SEC % secs2usec);
     select(0, NULL, NULL, NULL, &tval);
 }
-
-} // alsa
-} // platform
-} // anbox
+}
+}
+}
