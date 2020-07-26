@@ -33,7 +33,7 @@ namespace sdl {
 class AudioSource:public audio::Source {
 public:
     AudioSource();
-    ~AudioSource();
+    ~AudioSource() {}
     void read_data(const std::vector<std::uint8_t> &data) override;
     void set_socket_connection(std::shared_ptr<network::SocketConnection> const& connection) override;
     bool connect_audio() override;
