@@ -58,7 +58,7 @@ bool InList(SDL_Event event, vector<SDL_Event>& eventList) {
   for (auto ele = eventList.begin(); ele != eventList.end(); ) {
     auto manager_param2 = (platform::manager_window_param*)(ele->user.data1);
     if (event.user.code == ele->user.code &&
-          manager_param->windowId == manager_param2->windowId &&
+          manager_param->taskId == manager_param2->taskId &&
           manager_param->rect == manager_param2->rect &&
           manager_param->title == manager_param2->title) {
       delete manager_param2;
