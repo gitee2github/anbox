@@ -34,7 +34,9 @@ AudioSink::AudioSink() :
   queue_(max_queue_size) {
 }
 
-AudioSink::~AudioSink() {}
+AudioSink::~AudioSink() {
+  queue_.close_locked();
+}
 
 void AudioSink::on_data_requested(void *user_data, std::uint8_t *buffer, int size) {
   auto thiz = static_cast<AudioSink*>(user_data);
