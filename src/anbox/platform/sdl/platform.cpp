@@ -265,19 +265,24 @@ void Platform::user_event_function(const SDL_Event &event) {
     manager_window_param* param = (manager_window_param*) event.user.data1;
     if (param) {
       if (event_type == USER_CREATE_WINDOW) {
-        if (windows_.find(param->windowId) != windows_.end()) {
+        if (tasks_.find(param->taskId) != tasks_.end()) {
           return;
         }
-        auto w = create_window(param->windowId, param->rect, param->title);
+        auto w = create_window(param->taskId, param->rect, param->title);
         if (w) {
           w->attach();
-          window_manager_->insert_task(param->windowId, w);
+          window_manager_->insert_task(param->taskId, w);
         } else {
           WARNING("create window failed! remove task on android!");
-          window_manager_->remove_task(param->windowId);
+          window_manager_->remove_task(param->taskId);
         }
       } else if (event_type == USER_DESTROY_WINDOW) {
-        window_manager_->erase_task(param->windowId);
+        window_manager_->erase_task(param->taskId);
+        auto it = tasks_.find(param->taskId);
+        if (it != tasks_.end()) {
+            windows_.erase(it->second);
+            tasks_.erase(it);
+        }
       }
       delete param;
       param = nullptr;
@@ -418,7 +423,7 @@ void Platform::process_input_event(const SDL_Event &event) {
     touch_->send_events(touch_events);
 }
 
-int Platform::find_touch_slot(int id){
+int Platform::find_touch_slot(int id) {
   for (int i = 0; i < MAX_FINGERS; i++) {
     if (touch_slots[i] == id)
       return i;
@@ -426,14 +431,14 @@ int Platform::find_touch_slot(int id){
   return -1;
 }
 
-void Platform::push_slot(std::vector<input::Event> &touch_events, int slot){
+void Platform::push_slot(std::vector<input::Event> &touch_events, int slot) {
   if (last_slot != slot) {
     touch_events.push_back({EV_ABS, ABS_MT_SLOT, slot});
     last_slot = slot;
   }
 }
 
-void Platform::push_finger_down(int x, int y, int finger_id, std::vector<input::Event> &touch_events){
+void Platform::push_finger_down(int x, int y, int finger_id, std::vector<input::Event> &touch_events) {
   int slot = find_touch_slot(-1);
   if (slot == -1) {
     DEBUG("no free slot!");
@@ -447,7 +452,7 @@ void Platform::push_finger_down(int x, int y, int finger_id, std::vector<input::
   touch_events.push_back({EV_SYN, SYN_REPORT, 0});
 }
 
-void Platform::push_finger_up(int finger_id, std::vector<input::Event> &touch_events){
+void Platform::push_finger_up(int finger_id, std::vector<input::Event> &touch_events) {
   int slot = find_touch_slot(finger_id);
   if (slot == -1)
     return;
@@ -457,7 +462,7 @@ void Platform::push_finger_up(int finger_id, std::vector<input::Event> &touch_ev
   touch_slots[slot] = -1;
 }
 
-void Platform::push_finger_motion(int x, int y, int finger_id, std::vector<input::Event> &touch_events){
+void Platform::push_finger_motion(int x, int y, int finger_id, std::vector<input::Event> &touch_events) {
   int slot = find_touch_slot(finger_id);
   if (slot == -1)
     return;
@@ -544,6 +549,7 @@ std::shared_ptr<wm::Window> Platform::create_window(
   auto w = std::make_shared<Window>(renderer_, id, task, shared_from_this(), frame, title, !window_size_immutable_);
   focused_sdl_window_id_ = w->window_id();
   windows_.insert({id, w});
+  tasks_.insert({task, id});
   return w;
 }
 
@@ -554,7 +560,10 @@ void Platform::window_deleted(const Window::Id &id) {
     return;
   }
   if (auto window = w->second.lock())
+  {
+    tasks_.erase(window->task());
     window_manager_->remove_task(window->task());
+  }
   windows_.erase(w);
 }
 

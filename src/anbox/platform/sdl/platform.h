@@ -93,6 +93,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   // We don't own the windows anymore after the got created by us so we
   // need to be careful once we try to use them again.
   std::map<Window::Id, std::weak_ptr<Window>> windows_;
+  std::map<wm::Task::Id, Window::Id> tasks_;
   std::shared_ptr<Window> current_window_;
   std::thread event_thread_;
   std::thread ime_thread_;

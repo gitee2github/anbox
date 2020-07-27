@@ -44,11 +44,11 @@ enum User_Event {
 };
 
 struct manager_window_param {
-  int windowId = 0;
+  int taskId = 0;
   graphics::Rect rect;
   std::string title;
   manager_window_param (int id, graphics::Rect r, std::string t):
-    windowId(id),
+    taskId(id),
     rect(r),
     title(t)
     {}
