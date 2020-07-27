@@ -41,7 +41,8 @@ namespace sdl {
 Window::Id Window::Invalid{-1};
 const std::map<std::string, Window::window_property> Window::property_map = {
   {"QQ音乐", Window::HIDE_BACK},
-  {"喜马拉雅", Window::HIDE_MAXIMIZE}
+  {"喜马拉雅", Window::HIDE_MAXIMIZE},
+  {"i深圳", Window::HIDE_MAXIMIZE}
 };
 
 Window::Observer::~Observer() {}
@@ -65,9 +66,15 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   // renderer will attempt to create one too which will not work as
   // only a single surface per EGLNativeWindowType is supported.
   std::uint32_t flags = SDL_WINDOW_BORDERLESS;
-  if (resizable)
+  auto property_itr = property_map.find(title);
+  if (property_itr != property_map.end()) {
+    visible_property = property_itr->second;
+    if (!(visible_property & HIDE_MAXIMIZE) && resizable) {
+      flags |= SDL_WINDOW_RESIZABLE;
+    }
+  } else if (resizable) {
     flags |= SDL_WINDOW_RESIZABLE;
-
+  }
   window_ = SDL_CreateWindow(title.c_str(),
                              frame.left(), frame.top(),
                              frame.width(), frame.height(),
@@ -122,10 +129,6 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   lastClickTime = last_update_time;
 
   SDL_ShowWindow(window_);
-  auto property_itr = property_map.find(title);
-  if (property_itr != property_map.end()) {
-    visible_property = property_itr->second;
-  }
 }
 
 Window::~Window() {
