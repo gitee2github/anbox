@@ -33,6 +33,8 @@ namespace anbox {
 namespace platform {
 NullPlatform::NullPlatform() {}
 
+NullPlatform::~NullPlatform() {}
+
 std::shared_ptr<wm::Window> NullPlatform::create_window(
     const anbox::wm::Task::Id &task, const anbox::graphics::Rect &frame, const std::string &title) {
   return std::make_shared<::NullWindow>(task, frame, title);
