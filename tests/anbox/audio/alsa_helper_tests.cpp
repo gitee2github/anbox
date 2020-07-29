@@ -28,13 +28,14 @@ TEST (AlsaHelper, OpenPcmDevice) {
   EXPECT_EQ(0, alsahelper.open_pcm_device("default", SND_PCM_STREAM_CAPTURE, 0));
   alsahelper.close_pcm_device();
 
-  EXPECT_EQ(0, alsahelper.open_pcm_device("hw:2,0", SND_PCM_STREAM_CAPTURE, 0));
+  std::string deviceName = alsahelper.get_usb_audio_device_name();
+  EXPECT_EQ(0, alsahelper.open_pcm_device(deviceName.c_str(), SND_PCM_STREAM_CAPTURE, 0));
   alsahelper.close_pcm_device();
 
   EXPECT_EQ(0, alsahelper.open_pcm_device("default", SND_PCM_STREAM_PLAYBACK, 0));
   alsahelper.close_pcm_device();
 
-  EXPECT_EQ(0, alsahelper.open_pcm_device("hw:2,0", SND_PCM_STREAM_PLAYBACK, 0));
+  EXPECT_EQ(0, alsahelper.open_pcm_device(deviceName.c_str(), SND_PCM_STREAM_PLAYBACK, 0));
   alsahelper.close_pcm_device();
 
   // pc doesn't has hw:4,0 so open fail
@@ -56,7 +57,8 @@ TEST (AlsaHelper, ClosePcmDevice) {
 
 TEST (AlsaHelper, SetPcmParams) {
   AlsaHelper alsahelper;
-  alsahelper.open_pcm_device("hw:2,0", SND_PCM_STREAM_CAPTURE, 0);
+  std::string deviceName = alsahelper.get_usb_audio_device_name();
+  alsahelper.open_pcm_device(deviceName.c_str(), SND_PCM_STREAM_CAPTURE, 0);
   hwparams mhwparams;
   // rate is correct
   {
@@ -97,7 +99,8 @@ TEST (AlsaHelper, SetPcmParams) {
 
 TEST (AlsaHelper, PcmRead) {
   AlsaHelper alsahelper;
-  alsahelper.open_pcm_device("hw:2,0", SND_PCM_STREAM_CAPTURE, 0);
+  std::string deviceName = alsahelper.get_usb_audio_device_name();
+  alsahelper.open_pcm_device(deviceName.c_str(), SND_PCM_STREAM_CAPTURE, 0);
   hwparams params;
   params.rate = 48000; // 48kHZ
   params.channels = CHANELTYPE_MONO;
@@ -119,7 +122,8 @@ TEST (AlsaHelper, PcmRead) {
 
 TEST (AlsaHelper, GetPeriodFrames) {
   AlsaHelper alsahelper;
-  alsahelper.open_pcm_device("hw:2,0", SND_PCM_STREAM_CAPTURE, 0);
+  std::string deviceName = alsahelper.get_usb_audio_device_name();
+  alsahelper.open_pcm_device(deviceName.c_str(), SND_PCM_STREAM_CAPTURE, 0);
   hwparams params;
   params.rate = 48000; // 48KHz
   params.channels = CHANELTYPE_MONO;
@@ -132,7 +136,8 @@ TEST (AlsaHelper, GetPeriodFrames) {
 
 TEST(AlsaHelper,GetPeriodFramesBytes){
   AlsaHelper alsahelper;
-  alsahelper.open_pcm_device("hw:2,0", SND_PCM_STREAM_CAPTURE, 0);
+  std::string deviceName = alsahelper.get_usb_audio_device_name();
+  alsahelper.open_pcm_device(deviceName.c_str(), SND_PCM_STREAM_CAPTURE, 0);
   hwparams params;
   params.rate = 48000; // 48kHZ
   params.channels = CHANELTYPE_MONO;
@@ -148,7 +153,7 @@ TEST(AlsaHelper,GetUsbAudioDeviceName){
     AlsaHelper alsahelper;
     std::string deviceName;
     deviceName = alsahelper.get_usb_audio_device_name();
-    EXPECT_EQ(deviceName, "hw:2,0");
+    EXPECT_EQ(deviceName, "hw:1,0");
 }
 
 }
