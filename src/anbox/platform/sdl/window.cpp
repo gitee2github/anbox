@@ -38,11 +38,19 @@ constexpr const int button_padding{0};
 namespace anbox {
 namespace platform {
 namespace sdl {
-Window::Id Window::Invalid{-1};
-const std::map<std::string, Window::window_property> Window::property_map = {
-  {"喜马拉雅", Window::HIDE_MAXIMIZE},
-  {"i深圳", Window::HIDE_MAXIMIZE}
+
+static const std::uint32_t HIDE_BACK     = 0x01;
+static const std::uint32_t HIDE_MINIMIZE = 0x02;
+static const std::uint32_t HIDE_MAXIMIZE = 0x04;
+static const std::uint32_t HIDE_CLOSE    = 0x08;
+static const std::uint32_t SHOW_ALL      = 0x00;
+
+const std::map<std::string, std::uint32_t> Window::property_map = {
+  {"喜马拉雅", HIDE_MAXIMIZE},
+  {"i深圳", HIDE_MAXIMIZE}
 };
+
+Window::Id Window::Invalid{-1};
 
 Window::Observer::~Observer() {}
 
@@ -56,7 +64,8 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
       id_(id),
       lastClickTime(0),
       observer_(observer),
-      native_display_(0){
+      native_display_(0),
+      visible_property(SHOW_ALL) {
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
 
   // NOTE: We don't furce GL initialization of the window as this will
@@ -68,12 +77,11 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   auto property_itr = property_map.find(title);
   if (property_itr != property_map.end()) {
     visible_property = property_itr->second;
-    if (!(visible_property & HIDE_MAXIMIZE) && resizable) {
-      flags |= SDL_WINDOW_RESIZABLE;
-    }
-  } else if (resizable) {
+  }
+  if (!(visible_property & HIDE_MAXIMIZE) && resizable) {
     flags |= SDL_WINDOW_RESIZABLE;
   }
+
   window_ = SDL_CreateWindow(title.c_str(),
                              frame.left(), frame.top(),
                              frame.width(), frame.height(),

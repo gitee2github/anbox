@@ -25,6 +25,7 @@ namespace platform {
 class NullPlatform : public BasePlatform {
  public:
   NullPlatform();
+  ~NullPlatform();
   std::shared_ptr<wm::Window> create_window(
       const anbox::wm::Task::Id &task,
       const anbox::graphics::Rect &frame,

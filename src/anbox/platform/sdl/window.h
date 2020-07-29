@@ -42,15 +42,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   static const long long APP_START_MAX_TIME = 15 * USEC_PER_SEC;
   static const long long timespan_db_click = 500000;
 
-  enum window_property{
-    HIDE_BACK     = 0x01,
-    HIDE_MINIMIZE = 0x02,
-    HIDE_MAXIMIZE = 0x04,
-    HIDE_CLOSE    = 0x08,
-    SHOW_ALL      = 0x00
-  };
-
-  static const std::map<std::string, window_property> property_map;
+  static const std::map<std::string, std::uint32_t> property_map;
 
   class Observer {
    public:
@@ -82,7 +74,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   Id id() const;
   std::uint32_t window_id() const;
   Uint32 GetWindowFlags(){return SDL_GetWindowFlags(window_);}
-  inline window_property get_property() {
+  inline std::uint32_t get_property() {
       return visible_property;
   }
 
@@ -102,7 +94,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   int last_point_y{ 0 };
   int last_wnd_x{ 0 };
   int last_wnd_y{ 0 };
-  window_property visible_property{ SHOW_ALL };
+  std::uint32_t visible_property;
 };
 } // namespace sdl
 } // namespace platform
