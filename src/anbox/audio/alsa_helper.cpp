@@ -89,7 +89,7 @@ int AlsaHelper::set_pcm_params(hwparams params)
 
 int AlsaHelper::set_params()
 {
-    snd_pcm_hw_params_t *params;
+    snd_pcm_hw_params_t *params = nullptr;
     snd_pcm_uframes_t buffer_size;
     snd_pcm_uframes_t frames;
     int err = -1; // negative indicate error, otherwise success
