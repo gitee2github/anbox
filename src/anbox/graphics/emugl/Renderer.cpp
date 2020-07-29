@@ -376,6 +376,9 @@ HandleType Renderer::createColorBuffer(int p_width, int p_height,
     m_colorbuffers[ret].refcount = 1;
 
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    if (!tInfo) {
+        return -1;
+    }
     int tid = tInfo->m_tid;
     if (tid > 0) {
         m_procOwnedColorBuffers[tid].insert(ret);    
@@ -553,6 +556,9 @@ void Renderer::closeColorBuffer(HandleType p_colorbuffer)
     std::unique_lock<std::mutex> l(m_lock);
     closeColorBufferLocked(p_colorbuffer);
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    if (!tInfo) {
+        return;
+    }
     int tid = tInfo->m_tid;
     if (tid > 0) {
         auto ite = m_procOwnedColorBuffers.find(tid);
@@ -810,6 +816,9 @@ HandleType Renderer::createClientImage(HandleType context, EGLenum target,
     HandleType imgHnd = static_cast<HandleType>(reinterpret_cast<uintptr_t>(image));
 
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    if (!tInfo) {
+        return false;
+    }
     int tid = tInfo->m_tid;
     if (tid > 0) {
         std::unique_lock<std::mutex> l(m_lock);
@@ -823,6 +832,9 @@ EGLBoolean Renderer::destroyClientImage(HandleType image) {
                                   reinterpret_cast<EGLImageKHR>(image));
     if (!ret) return false;
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    if (!tInfo) {
+        return false;
+    }
     int tid = tInfo->m_tid;
     if (tid > 0) {
         std::unique_lock<std::mutex> l(m_lock);
