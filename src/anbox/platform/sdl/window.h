@@ -42,6 +42,12 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   static const long long APP_START_MAX_TIME = 15 * USEC_PER_SEC;
   static const long long timespan_db_click = 500000;
 
+  struct mini_size {
+    int minimum_width;
+    int minimum_height;
+  };
+
+  static const std::map<std::string, mini_size> custom_window_map;
   static const std::map<std::string, std::uint32_t> property_map;
 
   class Observer {
