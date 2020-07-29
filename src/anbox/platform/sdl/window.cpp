@@ -29,7 +29,7 @@
 #endif
 
 namespace {
-constexpr const int window_resize_border{3};
+constexpr const int window_resize_border{5};
 constexpr const int button_size{42};
 constexpr const int button_margin{0};
 constexpr const int button_padding{0};
