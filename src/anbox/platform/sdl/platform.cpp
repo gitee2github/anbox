@@ -270,6 +270,7 @@ void Platform::user_event_function(const SDL_Event &event) {
     if (param) {
       if (event_type == USER_CREATE_WINDOW) {
         if (tasks_.find(param->taskId) != tasks_.end()) {
+          delete param;
           return;
         }
         auto w = create_window(param->taskId, param->rect, param->title);
