@@ -36,6 +36,7 @@ AudioSink::AudioSink() :
 
 AudioSink::~AudioSink() {
   queue_.close_locked();
+  disconnect_audio();
 }
 
 void AudioSink::on_data_requested(void *user_data, std::uint8_t *buffer, int size) {
