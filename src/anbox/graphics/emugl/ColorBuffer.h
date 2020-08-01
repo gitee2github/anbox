@@ -22,6 +22,8 @@
 
 #include <memory>
 
+typedef uint32_t HandleType;
+
 class TextureDraw;
 class TextureResize;
 
@@ -77,7 +79,7 @@ class ColorBuffer {
   // Returns NULL on failure.
   static ColorBuffer* create(EGLDisplay p_display, int p_width, int p_height,
                              GLenum p_internalFormat,
-                             bool has_eglimage_texture_2d, Helper* helper);
+                             bool has_eglimage_texture_2d, Helper* helper, HandleType hndl);
 
   // Destructor.
   ~ColorBuffer();
@@ -115,10 +117,12 @@ class ColorBuffer {
 
   void bind();
 
+  HandleType getHndl() const;
+
  private:
   ColorBuffer();  // no default constructor.
 
-  explicit ColorBuffer(EGLDisplay display, Helper* helper);
+  explicit ColorBuffer(EGLDisplay display, Helper* helper, HandleType hndl);
 
  private:
   GLuint m_tex;
@@ -132,6 +136,7 @@ class ColorBuffer {
   EGLDisplay m_display;
   Helper* m_helper;
   TextureResize* m_resizer;
+  HandleType mHndl;
 };
 
 typedef std::shared_ptr<ColorBuffer> ColorBufferPtr;

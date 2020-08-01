@@ -28,7 +28,6 @@
 
 #include <set>
 
-typedef uint32_t HandleType;
 typedef std::set<HandleType> ThreadContextSet;
 typedef std::set<HandleType> WindowSurfaceSet;
 
