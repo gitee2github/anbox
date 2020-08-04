@@ -197,6 +197,7 @@ anbox::cmds::SessionManager::SessionManager()
     platform->set_window_manager(window_manager);
     platform->set_renderer(gl_server->renderer());
     window_manager->setup();
+    android_api_stub->set_platform(platform);
 
     auto app_manager = std::static_pointer_cast<application::Manager>(android_api_stub);
     if (!using_single_window) {

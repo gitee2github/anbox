@@ -54,6 +54,7 @@ class MultiWindowManager : public Manager {
   void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) override;
   void erase_task(const Task::Id &task) override;
 
+  std::string get_title(const std::string &package_name) override;
  private:
   std::mutex mutex_;
   std::weak_ptr<platform::BasePlatform> platform_;

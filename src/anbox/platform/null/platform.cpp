@@ -79,6 +79,10 @@ int NullPlatform::get_user_window_event() const {
   return -1;
 }
 
+bool NullPlatform::restore_app(const std::string &package_name) {
+  (void)package_name;
+}
+
 std::string NullPlatform::ime_socket_file() const {
   ERROR("Not implemented");
   return "";

@@ -39,6 +39,7 @@ class NullPlatform : public BasePlatform {
   bool supports_multi_window() const override;
   int get_user_window_event() const override;
   std::string ime_socket_file() const override;
+  bool restore_app(const std::string &package_name) override;
 };
 }  // namespace wm
 }  // namespace anbox

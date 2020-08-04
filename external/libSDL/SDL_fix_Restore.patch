@@ -1,0 +1,38 @@
+diff --git a/src/events/SDL_windowevents.c b/src/events/SDL_windowevents.c
+index 1670841..18e2135 100644
+--- a/src/events/SDL_windowevents.c
++++ b/src/events/SDL_windowevents.c
+@@ -127,7 +127,6 @@ SDL_SendWindowEvent(SDL_Window * window, Uint8 windowevent, int data1,
+         if (window->flags & SDL_WINDOW_MINIMIZED) {
+             return 0;
+         }
+-        window->flags &= ~SDL_WINDOW_MAXIMIZED;
+         window->flags |= SDL_WINDOW_MINIMIZED;
+         SDL_OnWindowMinimized(window);
+         break;
+diff --git a/src/video/x11/SDL_x11window.c b/src/video/x11/SDL_x11window.c
+index 0a254b0..e87ff2f 100644
+--- a/src/video/x11/SDL_x11window.c
++++ b/src/video/x11/SDL_x11window.c
+@@ -28,6 +28,7 @@
+ #include "../SDL_pixels_c.h"
+ #include "../../events/SDL_keyboard_c.h"
+ #include "../../events/SDL_mouse_c.h"
++#include <sys/syscall.h>
+ 
+ #include "SDL_x11video.h"
+ #include "SDL_x11mouse.h"
+@@ -1166,7 +1167,12 @@ X11_MinimizeWindow(_THIS, SDL_Window * window)
+ void
+ X11_RestoreWindow(_THIS, SDL_Window * window)
+ {
+-    SetWindowMaximized(_this, window, SDL_FALSE);
++    if ((window->flags & SDL_WINDOW_MAXIMIZED) && (window->flags & SDL_WINDOW_MINIMIZED)) {
++        SetWindowMaximized(_this, window, SDL_TRUE);
++    } else {
++        SetWindowMaximized(_this, window, SDL_FALSE);
++    }
++    window->flags &= ~SDL_WINDOW_MINIMIZED;
+     X11_ShowWindow(_this, window);
+     SetWindowActive(_this, window);
+ }

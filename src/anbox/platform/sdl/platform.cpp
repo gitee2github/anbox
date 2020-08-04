@@ -650,6 +650,20 @@ int Platform::get_user_window_event() const {
   }
   return user_window_event;
 }
+
+bool Platform::restore_app(const std::string &package_name) {
+  auto title = window_manager_->get_title(package_name);
+  for (auto &iter : windows_) {
+    if (auto w = iter.second.lock()) {
+      if (w->title() == title) {
+	w->restore_window();
+	DEBUG("ready to restore window");
+        return true;
+      }
+    }
+  }
+  return false;
+}
 } // namespace sdl
 } // namespace platform
 } // namespace anbox

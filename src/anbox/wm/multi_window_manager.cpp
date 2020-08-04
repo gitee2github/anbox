@@ -141,5 +141,14 @@ void MultiWindowManager::erase_task(const Task::Id &task) {
     windows_.erase(it);
   }
 }
+
+std::string MultiWindowManager::get_title(const std::string &package_name) {
+  auto app = app_db_->find_by_package(package_name);
+  if (app.valid()) {
+    return app.name;
+  } else {
+    return package_name;
+  }
+}
 }  // namespace wm
 }  // namespace anbox

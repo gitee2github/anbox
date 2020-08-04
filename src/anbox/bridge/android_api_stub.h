@@ -34,6 +34,9 @@ class Void;
 namespace rpc {
 class Channel;
 }  // namespace rpc
+namespace platform {
+class Platform;
+}  // namespace platform
 namespace bridge {
 class AndroidApiStub : public anbox::application::Manager {
  public:
@@ -48,6 +51,7 @@ class AndroidApiStub : public anbox::application::Manager {
   void resize_task(const std::int32_t &id, const anbox::graphics::Rect &rect,
                    const std::int32_t &resize_mode);
 
+  void set_platform(const std::shared_ptr<platform::BasePlatform>&base_platform);
   void launch(const android::Intent &intent,
               const graphics::Rect &launch_bounds = graphics::Rect::Invalid,
               const wm::Stack::Id &stack = wm::Stack::Id::Default) override;
@@ -70,6 +74,7 @@ class AndroidApiStub : public anbox::application::Manager {
   void task_resized(Request<protobuf::rpc::Void> *request);
 
   mutable std::mutex mutex_;
+  std::shared_ptr<platform::BasePlatform> platform_;
   std::shared_ptr<rpc::Channel> channel_;
   common::WaitHandle launch_wait_handle_;
   common::WaitHandle set_focused_task_handle_;

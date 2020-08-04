@@ -15,13 +15,13 @@
  *
  */
 
+#include "anbox/platform/base_platform.h"
 #include "anbox/bridge/android_api_stub.h"
 #include "anbox/system_configuration.h"
 #include "anbox/logger.h"
 #include "anbox/rpc/channel.h"
 #include "anbox/utils.h"
 #include "anbox/wm/stack.h"
-
 #include "anbox_bridge.pb.h"
 #include "anbox_rpc.pb.h"
 
@@ -105,6 +105,9 @@ void AndroidApiStub::launch(const android::Intent &intent,
     auto c = launch_intent->add_categories();
     *c = category;
   }
+
+  std::string package_name = intent.package;
+  platform_->restore_app(package_name);
 
   channel_->call_method(
       "launch_application", &message, c->response.get(),
@@ -222,6 +225,10 @@ void AndroidApiStub::resize_task(const std::int32_t &id,
 void AndroidApiStub::task_resized(Request<protobuf::rpc::Void> *request) {
   (void)request;
   resize_task_handle_.result_received();
+}
+
+void AndroidApiStub::set_platform(const std::shared_ptr<platform::BasePlatform>&base_platform) {
+  platform_ = base_platform;
 }
 }  // namespace bridge
 }  // namespace anbox
