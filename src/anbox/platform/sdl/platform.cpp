@@ -391,6 +391,12 @@ void Platform::process_input_event(const SDL_Event &event) {
         input_key_event(SDL_SCANCODE_AC_BACK, 0);
         break;
       }
+      if (code == KEY_CAPSLOCK) {
+        key_mod_ ^= KMOD_CAPS;
+      }
+      if (code == KEY_NUMLOCK) {
+        key_mod_ ^= KMOD_NUM;
+      }
       keyboard_events.push_back({EV_KEY, code, 0});
       break;
     }
@@ -574,7 +580,23 @@ void Platform::window_deleted(const Window::Id &id) {
 
 void Platform::window_wants_focus(const Window::Id &id) {
   auto w = windows_.find(id);
-  if (w == windows_.end()) return;
+  if (w == windows_.end()) {
+    return;
+  }
+
+  // if window's modstate is not the same as android, send
+  // capslock or numlock message to android to change it.
+  auto mod_state = SDL_GetModState();
+  if ((key_mod_ & KMOD_NUM) != (mod_state & KMOD_NUM)) {
+    input_key_event(SDL_SCANCODE_NUMLOCKCLEAR, 1);
+    input_key_event(SDL_SCANCODE_NUMLOCKCLEAR, 0);
+    key_mod_ ^= KMOD_NUM;
+  }
+  if ((key_mod_ & KMOD_CAPS) != (mod_state & KMOD_CAPS)) {
+    input_key_event(SDL_SCANCODE_CAPSLOCK, 1);
+    input_key_event(SDL_SCANCODE_CAPSLOCK, 0);
+    key_mod_ ^= KMOD_CAPS;
+  }
 
   if (auto window = w->second.lock()) {
     focused_sdl_window_id_ = window->window_id();
