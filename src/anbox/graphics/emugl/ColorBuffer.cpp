@@ -102,7 +102,7 @@ class ScopedHelperContext {
 // static
 ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
                                  int p_height, GLenum p_internalFormat,
-                                 bool has_eglimage_texture_2d, Helper* helper) {
+                                 bool has_eglimage_texture_2d, Helper* helper, HandleType hndl) {
   GLenum texInternalFormat = 0;
 
   switch (p_internalFormat) {
@@ -127,7 +127,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
     return NULL;
   }
 
-  ColorBuffer* cb = new ColorBuffer(p_display, helper);
+  ColorBuffer* cb = new ColorBuffer(p_display, helper, hndl);
 
   s_gles2.glGenTextures(1, &cb->m_tex);
   s_gles2.glBindTexture(GL_TEXTURE_2D, cb->m_tex);
@@ -176,7 +176,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
   return cb;
 }
 
-ColorBuffer::ColorBuffer(EGLDisplay display, Helper* helper)
+ColorBuffer::ColorBuffer(EGLDisplay display, Helper* helper, HandleType hndl)
     : m_tex(0),
       m_blitTex(0),
       m_eglImage(NULL),
@@ -184,7 +184,8 @@ ColorBuffer::ColorBuffer(EGLDisplay display, Helper* helper)
       m_fbo(0),
       m_internalFormat(0),
       m_display(display),
-      m_helper(helper) {}
+      m_helper(helper),
+      mHndl(hndl) {}
 
 ColorBuffer::~ColorBuffer() {
   ScopedHelperContext context(m_helper);
@@ -204,6 +205,10 @@ ColorBuffer::~ColorBuffer() {
   s_gles2.glDeleteTextures(2, tex);
 
   delete m_resizer;
+}
+
+HandleType ColorBuffer::getHndl() const {
+    return mHndl;
 }
 
 void ColorBuffer::readPixels(int x, int y, int width, int height,

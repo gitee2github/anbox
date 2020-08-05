@@ -27,6 +27,8 @@
 #include "gles2_dec.h"
 
 #include <stdio.h>
+#include <cstdint>
+#include <chrono>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -34,6 +36,12 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
 #pragma GCC diagnostic pop
+
+int64_t getCurrentLocalTimeStamp()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
 
 namespace {
 
@@ -84,10 +92,16 @@ class ColorBufferHelper : public ColorBuffer::Helper {
 };
 }  // namespace
 
+void Renderer::saveColorBuffer(ColorBufferRef* cbRef) {
+    eraseDelayedCloseColorBufferLocked(cbRef->cb->getHndl(), cbRef->closedTs);
+    cbRef->closedTs = 0;
+}
+
 HandleType Renderer::s_nextHandle = 0;
 
 void Renderer::finalize() {
   m_colorbuffers.clear();
+  m_colorBufferDelayedCloseList.clear();
   m_windows.clear();
   m_contexts.clear();
   s_egl.eglMakeCurrent(m_eglDisplay, NULL, NULL, NULL);
@@ -366,14 +380,15 @@ HandleType Renderer::createColorBuffer(int p_width, int p_height,
   std::unique_lock<std::mutex> l(m_lock);
 
   HandleType ret = 0;
+  ret = genHandle();
 
   ColorBufferPtr cb(ColorBuffer::create(
       getDisplay(), p_width, p_height, p_internalFormat,
-      getCaps().has_eglimage_texture_2d, m_colorBufferHelper));
+      getCaps().has_eglimage_texture_2d, m_colorBufferHelper, ret));
   if (cb) {
-    ret = genHandle();
     m_colorbuffers[ret].cb = cb;
     m_colorbuffers[ret].refcount = 1;
+    m_colorbuffers[ret].closedTs= 0;
 
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
     if (!tInfo) {
@@ -475,12 +490,7 @@ void Renderer::drainWindowSurface() {
     if (m_windows.find(windowHandle) != m_windows.end()) {
       HandleType oldColorBufferHandle = m_windows[windowHandle].second;
       if (oldColorBufferHandle) {
-        ColorBufferMap::iterator cit(m_colorbuffers.find(oldColorBufferHandle));
-        if (cit != m_colorbuffers.end()) {
-          if (--(*cit).second.refcount == 0) {
-            m_colorbuffers.erase(cit);
-          }
-        }
+        closeColorBufferLocked(oldColorBufferHandle);
       }
       m_windows.erase(windowHandle);
     }
@@ -511,11 +521,12 @@ void Renderer::DestroyRenderContext(HandleType p_context) {
 void Renderer::DestroyWindowSurface(HandleType p_surface) {
   std::unique_lock<std::mutex> l(m_lock);
 
-  if (m_windows.find(p_surface) != m_windows.end()) {
-    m_windows.erase(p_surface);
-    RenderThreadInfo *tinfo = RenderThreadInfo::get();
-    if (tinfo->m_windowSet.empty()) return;
-    tinfo->m_windowSet.erase(p_surface);
+  const auto w = m_windows.find(p_surface);
+  if (w != m_windows.end()) {
+      closeColorBufferLocked(w->second.second);
+      m_windows.erase(w);
+      RenderThreadInfo* tinfo = RenderThreadInfo::get();
+      tinfo->m_windowSet.erase(p_surface);
   }
 }
 
@@ -530,11 +541,57 @@ int Renderer::openColorBuffer(HandleType p_colorbuffer) {
     return -1;
   }
   (*c).second.refcount++;
+  saveColorBuffer(&c->second);
     int tid = tInfo->m_tid;
     if (tid > 0) {
         m_procOwnedColorBuffers[tid].insert(p_colorbuffer);
     }
   return 0;
+}
+
+void Renderer::eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts) {
+    // Find the first delayed buffer with a timestamp <= |ts|
+    auto it = std::lower_bound(
+                  m_colorBufferDelayedCloseList.begin(),
+                  m_colorBufferDelayedCloseList.end(), ts,
+                  [](const ColorBufferCloseInfo& ci, int64_t ts) {
+        return ci.ts < ts;
+    });
+    while (it != m_colorBufferDelayedCloseList.end() &&
+           it->ts == ts) {
+        // if this is the one we need - clear it out.
+        if (it->cbHandle == cb) {
+            it->cbHandle = 0;
+            break;
+        }
+        ++it;
+    }
+}
+
+void Renderer::performDelayedColorBufferCloseLocked() {
+    // Let's wait just long enough to make sure it's not because of instant
+    // timestamp change (end of previous second -> beginning of a next one),
+    // but not for long - this is a workaround for race conditions, and they
+    // are quick.
+    static constexpr int64_t kColorBufferClosingDelayMS = 2000;
+
+    const auto now = getCurrentLocalTimeStamp();
+    auto it = m_colorBufferDelayedCloseList.begin();
+    while (it != m_colorBufferDelayedCloseList.end() &&
+           (it->ts + kColorBufferClosingDelayMS <= now)) {
+        if (it->cbHandle != 0) {
+            for (auto& ite : m_procOwnedColorBuffers) {
+                if (ite.second.find(it->cbHandle) != ite.second.end()) {
+                    ite.second.erase(it->cbHandle);
+                }
+            }
+            const auto& cb = m_colorbuffers.find(it->cbHandle);
+            m_colorbuffers.erase(cb);
+        }
+        ++it;
+    }
+    m_colorBufferDelayedCloseList.erase(
+                m_colorBufferDelayedCloseList.begin(), it);
 }
 
 void Renderer::closeColorBufferLocked(HandleType p_colorbuffer) {
@@ -547,8 +604,11 @@ void Renderer::closeColorBufferLocked(HandleType p_colorbuffer) {
     return;
   }
   if (--(*c).second.refcount == 0) {
-    m_colorbuffers.erase(c);
+    c->second.closedTs = getCurrentLocalTimeStamp();
+    m_colorBufferDelayedCloseList.push_back(
+        {c->second.closedTs, p_colorbuffer});
   }
+  performDelayedColorBufferCloseLocked();
 }
 
 void Renderer::closeColorBuffer(HandleType p_colorbuffer)
@@ -649,6 +709,11 @@ bool Renderer::setWindowSurfaceColorBuffer(HandleType p_surface,
   }
 
   (*w).second.first->setColorBuffer((*c).second.cb);
+  saveColorBuffer(&c->second);
+  if (w->second.second) {
+    closeColorBufferLocked(w->second.second);
+  }
+  c->second.refcount++;
   (*w).second.second = p_colorbuffer;
   return true;
 }

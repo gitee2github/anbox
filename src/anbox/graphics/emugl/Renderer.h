@@ -44,6 +44,7 @@ typedef uint32_t HandleType;
 struct ColorBufferRef {
   ColorBufferPtr cb;
   uint32_t refcount;  // number of client-side references
+  int64_t closedTs;
 };
 typedef std::map<HandleType, RenderContextPtr> RenderContextMap;
 typedef std::unordered_set<HandleType> RenderContextSet;
@@ -86,6 +87,12 @@ class Renderer : public anbox::graphics::Renderer {
  public:
   Renderer();
   virtual ~Renderer();
+
+  void saveColorBuffer(ColorBufferRef* cbRef);
+
+  void eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts);
+
+  void performDelayedColorBufferCloseLocked();
 
   // Initialize the global instance.
   // |width| and |height| are the dimensions of the emulator GPU display
@@ -171,9 +178,9 @@ class Renderer : public anbox::graphics::Renderer {
   // createColorBuffer(). Note that if the reference count reaches 0,
   // the instance is destroyed automatically.
   void closeColorBuffer(HandleType p_colorbuffer);
-    void closeColorBufferLocked(HandleType p_colorbuffer);
+  void closeColorBufferLocked(HandleType p_colorbuffer);
 
-    void cleanupProcGLObjects(int tid);
+  void cleanupProcGLObjects(int tid);
   // Equivalent for eglMakeCurrent() for the current display.
   // |p_context|, |p_drawSurface| and |p_readSurface| are the handle values
   // of the context, the draw surface and the read surface, respectively.
@@ -326,5 +333,21 @@ class Renderer : public anbox::graphics::Renderer {
   ProcOwnedColorBuffers m_procOwnedColorBuffers;
   ProcOwnedEGLImages m_procOwnedEGLImages;
   ProcOwnedRenderContexts m_procOwnedRenderContext;
+
+  // A collection of color buffers that were closed without any usages
+  //
+  // If a buffer reached |refcount| == 0 while not being |opened|, instead of
+  // deleting it we remember the timestamp when this happened. Later, we
+  // check if the buffer stayed unopened long enough and if it did, we delete
+  // it permanently. On the other hand, if the color buffer was used then
+  // we don't care about timestamps anymore.
+  //
+  // Note: this collection is ordered by |ts| field.
+  struct ColorBufferCloseInfo {
+      int64_t ts; // when we got the close request.
+      HandleType cbHandle;    // 0 == already closed, do nothing
+  };
+  using ColorBufferDelayedClose = std::vector<ColorBufferCloseInfo>;
+  ColorBufferDelayedClose m_colorBufferDelayedCloseList;
 };
 #endif
