@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -44,6 +45,7 @@ class LauncherStorage {
   boost::filesystem::path path_for_item_icon(const std::string &package_name);
 
   boost::filesystem::path path_;
+  std::set<std::string> invisible_pkg_;
 };
 }  // namespace application
 }  // namespace anbox
