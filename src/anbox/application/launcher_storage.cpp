@@ -34,9 +34,17 @@ constexpr const char *snap_exe_path{"/snap/bin/anbox"};
 namespace anbox {
 namespace application {
 LauncherStorage::LauncherStorage(const fs::path &path) :
-  path_(path) {}
+  path_(path) {
+    set_.insert("com-android-contacts"); 
+    set_.insert("com-android-calendar");
+    set_.insert("com-android-deskclock");
+    set_.insert("com-android-email");
+    set_.insert("com-android-music");
+}
 
-LauncherStorage::~LauncherStorage() {}
+LauncherStorage::~LauncherStorage() {
+   set_.clear();
+}
 
 void LauncherStorage::reset() {
   if (fs::exists(path_)) {
@@ -69,6 +77,11 @@ void LauncherStorage::add_or_update(const Database::Item &item) {
 
   auto package_name = item.package;
   std::replace(package_name.begin(), package_name.end(), '.', '-');
+       
+  if(set_.count(package_name)) {
+    DEBUG("package_name:%s  skip!!!\n", package_name);
+    return ;
+  }
 
   auto exe_path = utils::process_get_exe_path(getpid());
   if (utils::get_env_value("SNAP").length() > 0)
