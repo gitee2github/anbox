@@ -57,7 +57,7 @@ const std::map<std::string, Window::mini_size>Window::custom_window_map = {
   {"微信", {WX_MINI_WIDTH, MINI_HEIGHT}}
 };
 
-Window::Id Window::Invalid{-1};
+Window::Id Window::Invalid{ -1 };
 
 Window::Observer::~Observer() {}
 
@@ -294,7 +294,9 @@ void Window::switch_window_state() {
 void Window::process_event(const SDL_Event &event) {
   switch (event.window.event) {
     case SDL_WINDOWEVENT_FOCUS_GAINED:
-      if (observer_) observer_->window_wants_focus(id_);
+      if (observer_) {
+        observer_->window_wants_focus(id_);
+      }
       break;
     case SDL_WINDOWEVENT_FOCUS_LOST:
       break;
