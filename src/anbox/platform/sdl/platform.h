@@ -125,6 +125,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   void push_finger_motion(int x, int y, int finger_id, std::vector<input::Event> &touch_events);
 
   int user_window_event = 0;
+  std::uint32_t key_mod_{ KMOD_NONE };
 };
 } // namespace sdl
 } // namespace platform

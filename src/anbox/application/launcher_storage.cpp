@@ -35,15 +35,15 @@ namespace anbox {
 namespace application {
 LauncherStorage::LauncherStorage(const fs::path &path) :
   path_(path) {
-    set_.insert("com-android-contacts"); 
-    set_.insert("com-android-calendar");
-    set_.insert("com-android-deskclock");
-    set_.insert("com-android-email");
-    set_.insert("com-android-music");
+    invisible_pkg_.insert("com-android-contacts"); 
+    invisible_pkg_.insert("com-android-calendar");
+    invisible_pkg_.insert("com-android-deskclock");
+    invisible_pkg_.insert("com-android-email");
+    invisible_pkg_.insert("com-android-music");
 }
 
 LauncherStorage::~LauncherStorage() {
-   set_.clear();
+   invisible_pkg_.clear();
 }
 
 void LauncherStorage::reset() {
@@ -78,8 +78,8 @@ void LauncherStorage::add_or_update(const Database::Item &item) {
   auto package_name = item.package;
   std::replace(package_name.begin(), package_name.end(), '.', '-');
        
-  if(set_.count(package_name)) {
-    DEBUG("package_name:%s  skip!!!\n", package_name);
+  if(invisible_pkg_.count(package_name)) {
+    DEBUG("package_name:%s   skip!!!\n", package_name);
     return ;
   }
 
