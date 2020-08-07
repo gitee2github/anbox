@@ -1347,6 +1347,8 @@ int ApiGen::readAttributes(const std::string & attribFilename)
             break;
         }
     }
+    
+    fclose(fp);
     return 0;
 }
 
