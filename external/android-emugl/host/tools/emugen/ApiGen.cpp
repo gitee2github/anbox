@@ -21,6 +21,8 @@
 #include <errno.h>
 #include <sys/types.h>
 
+#include <limits.h>
+
 /* Define this to 1 to enable support for the 'isLarge' variable flag
  * that instructs the encoder to send large data buffers by a direct
  * write through the pipe (i.e. without copying it into a temporary
@@ -286,9 +288,15 @@ int ApiGen::genOpcodes(const std::string &filename)
 }
 int ApiGen::genAttributesTemplate(const std::string &filename )
 {
-    FILE *fp = fopen(filename.c_str(), "wt");
+    const char* untrustPath = filename.c_str();
+    char path[PATH_MAX] = {0};
+    if(realpath(untrustPath, path) == NULL) {
+        return -1;
+    }
+
+    FILE *fp = fopen(path, "wt");
     if (fp == NULL) {
-        perror(filename.c_str());
+        perror(path);
         return -1;
     }
 
@@ -454,9 +462,15 @@ static void writeEncodingChecksumValidatorOnReturn(const char* funcName, FILE* f
 
 int ApiGen::genEncoderImpl(const std::string &filename)
 {
-    FILE *fp = fopen(filename.c_str(), "wt");
+    const char* untrustPath = filename.c_str();
+    char path[PATH_MAX] = {0};
+    if(realpath(untrustPath, path) == NULL) {
+        return -1;
+    }
+
+    FILE *fp = fopen(path, "wt");
     if (fp == NULL) {
-        perror(filename.c_str());
+        perror(path);
         return -1;
     }
 
