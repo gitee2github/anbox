@@ -460,7 +460,11 @@ HandleType Renderer::createWindowSurface(int p_config, int p_width,
     ret = genHandle();
     m_windows[ret] = std::pair<WindowSurfacePtr, HandleType>(win, 0);
     RenderThreadInfo *tinfo = RenderThreadInfo::get();
-    tinfo->m_windowSet.insert(ret);
+    if (tinfo) {
+      tinfo->m_windowSet.insert(ret);
+    }else{
+      ERROR("tinfo == nullptr!!!");
+    }
   }
 
   return ret;
