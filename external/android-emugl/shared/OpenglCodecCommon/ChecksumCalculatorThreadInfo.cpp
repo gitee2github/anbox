@@ -59,35 +59,55 @@ ChecksumCalculatorThreadInfo::~ChecksumCalculatorThreadInfo() {
 }
 
 uint32_t ChecksumCalculatorThreadInfo::getVersion() {
-    return getChecksumCalculatorThreadInfo()->m_protocol.getVersion();
+    uint32_t ret = 0;
+    if(getChecksumCalculatorThreadInfo() != nullptr) {
+        ret = getChecksumCalculatorThreadInfo()->m_protocol.getVersion();
+    }
+    return ret;
 }
 
 bool ChecksumCalculatorThreadInfo::setVersion(uint32_t version) {
-    return getChecksumCalculatorThreadInfo()->m_protocol.setVersion(version);
+    bool ret = false;
+    if(getChecksumCalculatorThreadInfo() != nullptr) {
+       ret = getChecksumCalculatorThreadInfo()->m_protocol.setVersion(version);
+    }
+    return ret; 
 }
 
 size_t ChecksumCalculatorThreadInfo::checksumByteSize() {
-    return getChecksumCalculatorThreadInfo()->m_protocol.checksumByteSize();
+    size_t ret = 0;
+    if(getChecksumCalculatorThreadInfo() != nullptr) {
+       ret = getChecksumCalculatorThreadInfo()->m_protocol.checksumByteSize();
+    }
+    return ret;
 }
 
 bool ChecksumCalculatorThreadInfo::writeChecksum(void* buf,
                                                  size_t bufLen,
                                                  void* outputChecksum,
                                                  size_t outputChecksumLen) {
-    ChecksumCalculator& protocol =
-            getChecksumCalculatorThreadInfo()->m_protocol;
-    protocol.addBuffer(buf, bufLen);
-    return protocol.writeChecksum(outputChecksum, outputChecksumLen);
+    bool ret = false;
+    if(getChecksumCalculatorThreadInfo() != nullptr) {
+        ChecksumCalculator& protocol =
+                    getChecksumCalculatorThreadInfo()->m_protocol;
+        protocol.addBuffer(buf, bufLen);
+        ret =  protocol.writeChecksum(outputChecksum, outputChecksumLen);   
+    }
+    return ret;
 }
 
 bool ChecksumCalculatorThreadInfo::validate(void* buf,
                                             size_t bufLen,
                                             void* checksum,
                                             size_t checksumLen) {
-    ChecksumCalculator& protocol =
-            getChecksumCalculatorThreadInfo()->m_protocol;
-    protocol.addBuffer(buf, bufLen);
-    return protocol.validate(checksum, checksumLen);
+    bool ret = false;
+    if(getChecksumCalculatorThreadInfo() != nullptr) {
+      ChecksumCalculator& protocol =
+              getChecksumCalculatorThreadInfo()->m_protocol;
+      protocol.addBuffer(buf, bufLen);
+      ret =  protocol.validate(checksum, checksumLen);
+    }
+    return ret;    
 }
 
 void ChecksumCalculatorThreadInfo::validOrDie(void* buf,
