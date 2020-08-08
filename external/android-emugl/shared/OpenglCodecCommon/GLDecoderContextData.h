@@ -52,7 +52,7 @@ public:
               mNumLocations(static_cast<unsigned>(numLocations)) {
         mPointerData.resize(mNumLocations);
     }
-
+    ~GLDecoderContextData(){}
     // Store |len| bytes from |data| into the buffer associated with
     // vertex attribute index |loc|.
     void storePointerData(unsigned int loc, void *data, size_t len) {
