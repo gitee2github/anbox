@@ -239,6 +239,9 @@ void ColorBuffer::subUpdate(int x, int y, int width, int height,
 
 bool ColorBuffer::blitFromCurrentReadBuffer() {
   RenderThreadInfo* tInfo = RenderThreadInfo::get();
+  if (!tInfo) {
+    return false;
+  }
   if (!tInfo->currContext) {
     // no Current context
     return false;
@@ -300,6 +303,9 @@ bool ColorBuffer::bindToTexture() {
     return false;
   }
   RenderThreadInfo* tInfo = RenderThreadInfo::get();
+  if (!tInfo) {
+    return false;
+  }
   if (!tInfo->currContext) {
     return false;
   }

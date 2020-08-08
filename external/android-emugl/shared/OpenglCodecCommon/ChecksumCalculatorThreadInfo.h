@@ -36,16 +36,16 @@ public:
     }
 
     static size_t checksumByteSize();
-    static bool writeChecksum(void* buf,
+    static bool writeChecksum(const void* buf,
                               size_t bufLen,
                               void* outputChecksum,
                               size_t outputChecksumLen);
 
-    static bool validate(void* buf,
+    static bool validate(const void* buf,
                          size_t bufLen,
                          void* checksum,
                          size_t checksumLen);
-    static void validOrDie(void* buf,
+    static void validOrDie(const void* buf,
                            size_t bufLen,
                            void* checksum,
                            size_t checksumLen,
