@@ -470,6 +470,9 @@ void Renderer::drainRenderContext() {
   std::unique_lock<std::mutex> l(m_lock);
 
   RenderThreadInfo *tinfo = RenderThreadInfo::get();
+  if (!tinfo) {
+    return;
+  }
   if (tinfo->m_contextSet.empty()) return;
   for (std::set<HandleType>::iterator it = tinfo->m_contextSet.begin();
        it != tinfo->m_contextSet.end(); ++it) {

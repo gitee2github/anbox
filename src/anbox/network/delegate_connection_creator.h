@@ -33,6 +33,7 @@ class DelegateConnectionCreator : public ConnectionCreator<stream_protocol> {
                              stream_protocol>> const&)>
           delegate)
       : delegate_(delegate) {}
+  ~DelegateConnectionCreator() {}
 
   void create_connection_for(
       std::shared_ptr<boost::asio::basic_stream_socket<stream_protocol>> const&

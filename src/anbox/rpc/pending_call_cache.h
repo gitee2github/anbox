@@ -41,6 +41,7 @@ namespace rpc {
 class PendingCallCache {
  public:
   PendingCallCache();
+  ~PendingCallCache();
 
   void save_completion_details(
       anbox::protobuf::rpc::Invocation const &invocation,

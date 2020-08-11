@@ -621,6 +621,7 @@ public:
 class StackTraceImplBase {
 public:
 	StackTraceImplBase(): _thread_id(0), _skip(0) {}
+	~StackTraceImplBase() {}
 
 	size_t thread_id() const {
 		return _thread_id;
@@ -3493,6 +3494,7 @@ public:
 		inliner_context_size(5),
 		trace_context_size(7)
 		{}
+	~Printer() {}
 
 	template <typename ST>
 		FILE* print(ST& st, FILE* fp = stderr) {
@@ -3716,6 +3718,8 @@ public:
 		_loaded = success;
 	}
 
+	~SignalHandling() {}
+
 	bool loaded() const { return _loaded; }
 
 	static void handleSignal(int, siginfo_t* info, void* _ctx) {
@@ -3785,6 +3789,7 @@ private:
 class SignalHandling {
 public:
 	SignalHandling(const std::vector<int>& = std::vector<int>()) {}
+	~SignalHandling() {}
 	bool init() { return false; }
 	bool loaded() { return false; }
 };

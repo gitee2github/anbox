@@ -70,7 +70,7 @@ size_t ChecksumCalculatorThreadInfo::checksumByteSize() {
     return getChecksumCalculatorThreadInfo()->m_protocol.checksumByteSize();
 }
 
-bool ChecksumCalculatorThreadInfo::writeChecksum(void* buf,
+bool ChecksumCalculatorThreadInfo::writeChecksum(const void* buf,
                                                  size_t bufLen,
                                                  void* outputChecksum,
                                                  size_t outputChecksumLen) {
@@ -80,7 +80,7 @@ bool ChecksumCalculatorThreadInfo::writeChecksum(void* buf,
     return protocol.writeChecksum(outputChecksum, outputChecksumLen);
 }
 
-bool ChecksumCalculatorThreadInfo::validate(void* buf,
+bool ChecksumCalculatorThreadInfo::validate(const void* buf,
                                             size_t bufLen,
                                             void* checksum,
                                             size_t checksumLen) {
@@ -90,7 +90,7 @@ bool ChecksumCalculatorThreadInfo::validate(void* buf,
     return protocol.validate(checksum, checksumLen);
 }
 
-void ChecksumCalculatorThreadInfo::validOrDie(void* buf,
+void ChecksumCalculatorThreadInfo::validOrDie(const void* buf,
                                               size_t bufLen,
                                               void* checksum,
                                               size_t checksumLen,
