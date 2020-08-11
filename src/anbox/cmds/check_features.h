@@ -29,6 +29,7 @@ namespace cmds {
 class CheckFeatures : public cli::CommandWithFlagsAndAction {
  public:
   CheckFeatures();
+  ~CheckFeatures(){}
 
  private:
   bool sanity_check_for_features();
