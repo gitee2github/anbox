@@ -22,8 +22,8 @@ AUDIOSERVER_MULTILIB := 64
 
 TARGET_USES_64_BIT_BINDER := true
 
-SMALLER_FONT_FOOTPRINT := true
-MINIMAL_FONT_FOOTPRINT := true
+SMALLER_FONT_FOOTPRINT := false
+MINIMAL_FONT_FOOTPRINT := false
 # Some framework code requires this to enable BT
 BOARD_HAVE_BLUETOOTH := true
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/generic/common/bluetooth
