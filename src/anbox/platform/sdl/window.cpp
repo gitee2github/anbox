@@ -371,6 +371,15 @@ void Window::update_state(const wm::WindowState::List &states) {
     update_frame(rect);
   }
 }
+
+void Window::restore_window() {
+  SDL_ShowWindow(window_);
+  SDL_RaiseWindow(window_);
+  auto flags = SDL_GetWindowFlags(window_);
+  if (flags & SDL_WINDOW_MINIMIZED) {
+    SDL_RestoreWindow(window_);
+  }
+}
 } // namespace sdl
 } // namespace platform
 } // namespace anbox

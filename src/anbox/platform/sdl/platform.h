@@ -52,6 +52,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
       const anbox::graphics::Rect &frame,
       const std::string &title) override;
 
+  bool restore_app(const std::string &package_name) override;
   void input_key_event(const SDL_Scancode &scan_code, std::int32_t down_or_up) override;
   void window_deleted(const Window::Id &id) override;
   void window_wants_focus(const Window::Id &id) override;

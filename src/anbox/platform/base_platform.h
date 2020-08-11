@@ -73,6 +73,7 @@ class BasePlatform {
   virtual void set_renderer(const std::shared_ptr<Renderer> &renderer) = 0;
   virtual void set_window_manager(const std::shared_ptr<wm::Manager> &window_manager) = 0;
 
+  virtual bool restore_app(const std::string &package_name) = 0;
   virtual bool supports_multi_window() const = 0;
   virtual int get_user_window_event() const = 0;
   virtual std::string ime_socket_file() const = 0;

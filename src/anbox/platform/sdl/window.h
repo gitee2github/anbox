@@ -77,6 +77,8 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   void update_state(const wm::WindowState::List &states) override;
 
   bool check_db_clicked(int x, int y);
+
+  void restore_window();
   Id id() const;
   std::uint32_t window_id() const;
   Uint32 GetWindowFlags(){return SDL_GetWindowFlags(window_);}

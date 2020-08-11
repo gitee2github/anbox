@@ -42,6 +42,7 @@ class Manager {
   virtual void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) = 0;
   virtual void erase_task(const Task::Id &task) = 0;
 
+  virtual std::string get_title(const std::string &package_name) = 0;
   // FIXME only applies for the multi-window case
   virtual std::shared_ptr<Window> find_window_for_task(const Task::Id &task) = 0;
 };

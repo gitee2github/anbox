@@ -84,5 +84,10 @@ void SingleWindowManager::insert_task(const Task::Id &task, std::shared_ptr<wm::
 void SingleWindowManager::erase_task(const Task::Id &task) {
   (void)task;
 }
+
+std::string SingleWindowManager::get_title(const std::string &package_name) {
+  (void)package_name;
+  return "";
+}
 }  // namespace wm
 }  // namespace anbox
