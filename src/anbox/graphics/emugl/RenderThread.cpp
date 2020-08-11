@@ -62,7 +62,7 @@ intptr_t RenderThread::main() {
     if (stat <= 0)
       break;
 
-    bool progress;
+    bool progress = false;
     do {
       progress = false;
 
