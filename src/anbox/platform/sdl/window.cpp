@@ -50,7 +50,8 @@ static const std::uint32_t WX_MINI_WIDTH = 730;
 
 const std::map<std::string, std::uint32_t> Window::property_map = {
   {"喜马拉雅", HIDE_MAXIMIZE},
-  {"i深圳", HIDE_MAXIMIZE}
+  {"i深圳", HIDE_MAXIMIZE},
+  {"地铁跑酷", HIDE_MAXIMIZE}
 };
 
 const std::map<std::string, Window::mini_size>Window::custom_window_map = {
