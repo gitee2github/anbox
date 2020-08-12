@@ -87,6 +87,7 @@ class ColorBufferHelper : public ColorBuffer::Helper {
 
   virtual TextureDraw *getTextureDraw() const { return mFb->getTextureDraw(); }
 
+  ~ColorBufferHelper() {}
  private:
   Renderer *mFb;
 };

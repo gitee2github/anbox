@@ -32,7 +32,7 @@ int parse_string_from_message(sd_bus_message *m, std::string &str) {
   if (r < 0)
     return r;
 
-  const char *value;
+  const char *value = nullptr;
   r = sd_bus_message_read(m, "s", &value);
   if (r < 0)
     return r;
