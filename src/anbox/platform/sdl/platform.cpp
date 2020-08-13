@@ -176,6 +176,7 @@ void Platform::create_ime_socket() {
   socket_addr.sun_family = AF_UNIX;
   if (ime_socket_file_.length() >= strlen(socket_addr.sun_path) - 1) {
     ERROR("Create ime failed, socket path too long");
+    close(ime_socket);
     return;
   }
   strcpy(socket_addr.sun_path, ime_socket_file_.c_str());
