@@ -73,6 +73,7 @@ int TypeFactory::initFromFile(const std::string &filename)
         name = normalizeTypeDeclaration(name);
         if (name.size() == 0) {
             fprintf(stderr, "Error: %d : missing type name\n", lc);
+            fclose(fp);
             return -2;
         }
         pos = last + 1;
@@ -80,6 +81,7 @@ int TypeFactory::initFromFile(const std::string &filename)
         size = getNextToken(str, pos, &last, WHITESPACE);
         if (size.size() == 0) {
             fprintf(stderr, "Error: %d : missing type width\n", lc);
+            fclose(fp);
             return -2;
         }
         pos = last + 1;
@@ -87,6 +89,7 @@ int TypeFactory::initFromFile(const std::string &filename)
         printString = getNextToken(str, pos, &last, WHITESPACE);
         if (printString.size() == 0) {
             fprintf(stderr, "Error: %d : missing print-string\n", lc);
+            fclose(fp);
             return -2;
         }
 
@@ -103,15 +106,18 @@ int TypeFactory::initFromFile(const std::string &filename)
             if (std::string("true")==pointerDef) {
                 if (!isPointer) {
                     fprintf(stderr, "Error: %d: invalid isPointer definition: 'true' but name does not end with '*'!\n", lc);
+                    fclose(fp);
                     return -2;
                 }
             } else if (std::string("false")==pointerDef) {
                 if (isPointer) {
                     fprintf(stderr, "Error: %d: invalid isPointer definition: 'false' but name does end with '*'!\n", lc);
+                    fclose(fp);
                     return -2;
                 }
             } else {
                 fprintf(stderr, "Error: %d : invalid isPointer definition, must be either \"true\" or \"false\"\n", lc);
+                fclose(fp);
                 return -2;
             }
         }
@@ -139,6 +145,7 @@ int TypeFactory::initFromFile(const std::string &filename)
                                    isPointer))); //add a const type
     }
     g_initialized = true;
+    fclose(fp);
     return 0;
 }
 

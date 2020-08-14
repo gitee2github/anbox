@@ -18,6 +18,7 @@
 #include "anbox/common/loop_device.h"
 #include "anbox/defer_action.h"
 
+#include <limits.h>
 #include <system_error>
 
 #include <linux/loop.h>
@@ -50,7 +51,13 @@ bool LoopDevice::attach_file(const boost::filesystem::path &file_path) {
   if (fd_ < 0)
     return false;
 
-  int file_fd = ::open(file_path.c_str(), O_RDONLY);
+  const char* untrustPath = file_path.c_str();
+  char path[PATH_MAX] = {0};
+  if (realpath(untrustPath, path) == NULL) {
+    return false;
+  }
+
+  int file_fd = ::open(path, O_RDONLY);
   if (file_fd < 0)
     return false;
 
