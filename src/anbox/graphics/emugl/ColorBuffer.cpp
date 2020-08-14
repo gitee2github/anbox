@@ -128,6 +128,9 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
   }
 
   ColorBuffer* cb = new ColorBuffer(p_display, helper, hndl);
+  if (!cb) {
+    return NULL;
+  }
 
   s_gles2.glGenTextures(1, &cb->m_tex);
   s_gles2.glBindTexture(GL_TEXTURE_2D, cb->m_tex);
@@ -172,6 +175,9 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
   }
 
   cb->m_resizer = new TextureResize(p_width, p_height);
+  if (!(cb->m_resizer)) {
+    return NULL;
+  }
 
   return cb;
 }
@@ -322,6 +328,9 @@ bool ColorBuffer::bindToRenderbuffer() {
     return false;
   }
   RenderThreadInfo* tInfo = RenderThreadInfo::get();
+  if (!tInfo) {
+    return false;
+  }
   if (!tInfo->currContext) {
     return false;
   }
