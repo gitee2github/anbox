@@ -39,6 +39,7 @@ class IpConfigBuilder {
   };
 
   IpConfigBuilder() = default;
+  ~IpConfigBuilder(){}
 
   std::size_t write(common::BinaryWriter &writer);
 

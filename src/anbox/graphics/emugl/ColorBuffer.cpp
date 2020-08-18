@@ -295,6 +295,9 @@ bool ColorBuffer::blitFromCurrentReadBuffer() {
     s_gles2.glViewport(0, 0, m_width, m_height);
 
     // render m_blitTex
+    if (!m_helper->getTextureDraw()) {
+        return false;
+    }
     m_helper->getTextureDraw()->draw(m_blitTex);
 
     // Restore previous viewport.

@@ -98,7 +98,7 @@ bool ChecksumCalculatorThreadInfo::writeChecksum(const void* buf,
 
 bool ChecksumCalculatorThreadInfo::validate(const void* buf,
                                             size_t bufLen,
-                                            void* checksum,
+                                            const void* checksum,
                                             size_t checksumLen) {
     bool ret = false;
     if(getChecksumCalculatorThreadInfo() != nullptr) {
