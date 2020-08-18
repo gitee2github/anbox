@@ -431,6 +431,9 @@ HandleType Renderer::createRenderContext(int p_config, HandleType p_share,
     ret = genHandle();
     m_contexts[ret] = rctx;
     RenderThreadInfo *tinfo = RenderThreadInfo::get();
+    if (!tinfo) {
+      return -1;
+    }
     int tid = tinfo->m_tid;
     // The new emulator manages render contexts per guest process.
     // Fall back to per-thread management if the system image does not
@@ -511,6 +514,9 @@ void Renderer::DestroyRenderContext(HandleType p_context) {
 
   m_contexts.erase(p_context);
   RenderThreadInfo *tinfo = RenderThreadInfo::get();
+  if (!tinfo) {
+    return;
+  }
     int tid = tinfo->m_tid;
     // The new emulator manages render contexts per guest process.
     // Fall back to per-thread management if the system image does not
