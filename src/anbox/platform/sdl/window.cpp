@@ -46,12 +46,11 @@ static const std::uint32_t HIDE_CLOSE    = 0x08;
 static const std::uint32_t SHOW_ALL      = 0x00;
 static const std::uint32_t MINI_WIDTH    = 540;
 static const std::uint32_t MINI_HEIGHT   = 700;
-static const std::uint32_t WX_MINI_WIDTH = 730;
+static const std::uint32_t WX_MINI_WIDTH = 540;
 
 const std::map<std::string, std::uint32_t> Window::property_map = {
-  {"喜马拉雅", HIDE_MAXIMIZE},
-  {"i深圳", HIDE_MAXIMIZE},
-  {"地铁跑酷", HIDE_MAXIMIZE}
+  {"腾讯视频", SHOW_ALL},
+  {"爱奇艺", SHOW_ALL}
 };
 
 const std::map<std::string, Window::mini_size>Window::custom_window_map = {
@@ -85,6 +84,8 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   auto property_itr = property_map.find(title);
   if (property_itr != property_map.end()) {
     visible_property = property_itr->second;
+  } else {
+    visible_property = HIDE_MAXIMIZE;
   }
   if (!(visible_property & HIDE_MAXIMIZE) && resizable) {
     flags |= SDL_WINDOW_RESIZABLE;
@@ -173,33 +174,6 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
   const auto button_area_width = graphics::dp_to_pixel(button_size + (button_margin << 1));
 
   SDL_HitTestResult result = SDL_HITTEST_NORMAL;
-
-  while (!(platform_window->GetWindowFlags() & SDL_WINDOW_MAXIMIZED)) {
-    if (pt->x < border_size && pt->y < border_size)
-      result = SDL_HITTEST_RESIZE_TOPLEFT;
-    else if (pt->x > window_resize_border && pt->x < w - border_size && pt->y < border_size)
-      result = SDL_HITTEST_RESIZE_TOP;
-    else if (pt->x > w - border_size && pt->y < border_size)
-      result = SDL_HITTEST_RESIZE_TOPRIGHT;
-    else if (pt->x > w - border_size && pt->y > border_size && pt->y < h - border_size)
-      result = SDL_HITTEST_RESIZE_RIGHT;
-    else if (pt->x > w - border_size && pt->y > h - border_size)
-      result = SDL_HITTEST_RESIZE_BOTTOMRIGHT;
-    else if (pt->x < w - border_size && pt->x > border_size && pt->y > h - border_size)
-      result = SDL_HITTEST_RESIZE_BOTTOM;
-    else if (pt->x < border_size && pt->y > h - border_size)
-      result = SDL_HITTEST_RESIZE_BOTTOMLEFT;
-    else if (pt->x < border_size && pt->y < h - border_size && pt->y > border_size)
-      result = SDL_HITTEST_RESIZE_LEFT;
-    else
-      break;
-
-    if (!platform_window->initialized.load()) {
-      INFO("window initialized by resize");
-      platform_window->initialized = true;
-    }
-    return result;
-  }
 
   if (pt->y < top_drag_area_height) {
     if (!platform_window->initialized.load()) {
