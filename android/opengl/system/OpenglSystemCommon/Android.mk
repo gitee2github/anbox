@@ -5,9 +5,10 @@ $(call emugl-import,libGLESv1_enc libGLESv2_enc lib_renderControl_enc)
 
 LOCAL_SRC_FILES := \
     HostConnection.cpp \
+    FormatConversions.cpp \
     QemuPipeStream.cpp \
     ThreadInfo.cpp
 
 $(call emugl-export,C_INCLUDES,$(LOCAL_PATH) bionic/libc/private)
-
+$(call emugl-export,SHARED_LIBRARIES,libcutils libutils liblog)
 $(call emugl-end-module)
