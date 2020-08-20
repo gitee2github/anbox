@@ -40,6 +40,7 @@ class BufferQueue {
   int try_pop_locked(Buffer *buffer);
   int pop_locked(Buffer *buffer, std::unique_lock<std::mutex> &lock);
   void close_locked();
+  ~BufferQueue() {}
 
  private:
   size_t capacity_ = 0;

@@ -54,7 +54,7 @@ class SystemInformation {
     collect_kernel_info();
     collect_graphics_info();
   }
-
+  ~SystemInformation() {}
   std::string to_text() const {
     std::stringstream s;
 

@@ -153,6 +153,7 @@ class SmallVector {
     this->destruct(this->begin(), this->end());
     if (isAllocated()) {
       free(this->mBegin);
+      this->mBegin = nullptr;
     }
   }
 
