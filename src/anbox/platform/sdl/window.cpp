@@ -175,7 +175,7 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
 
   SDL_HitTestResult result = SDL_HITTEST_NORMAL;
 
-  if (pt->y < top_drag_area_height) {
+  if (pt->y <= top_drag_area_height) {
     if (!platform_window->initialized.load()) {
       INFO("window initialized by click top");
       platform_window->initialized = true;
