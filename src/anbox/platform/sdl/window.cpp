@@ -279,11 +279,19 @@ void Window::process_event(const SDL_Event &event) {
     // SDL_WINDOWEVENT_SIZE_CHANGED is always sent.
     case SDL_WINDOWEVENT_SIZE_CHANGED:
       if (observer_) {
+        struct timeval now = (struct timeval) { 0 };
+        gettimeofday(&now, NULL);
+        last_resize_time_ = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+        resizing_ = true;
         observer_->window_resized(id_, event.window.data1, event.window.data2);
       }
       break;
     case SDL_WINDOWEVENT_MOVED:
       if (observer_) {
+        struct timeval now = (struct timeval) { 0 };
+        gettimeofday(&now, NULL);
+        last_resize_time_ = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+        resizing_ = true;
         observer_->window_moved(id_, event.window.data1, event.window.data2);
       }
       break;
@@ -304,6 +312,22 @@ void Window::process_event(const SDL_Event &event) {
 Window::Id Window::id() const { return id_; }
 
 std::uint32_t Window::window_id() const { return SDL_GetWindowID(window_); }
+
+bool Window::checkResizeable() {
+  struct timeval now = (struct timeval) { 0 };
+  gettimeofday(&now, NULL);
+  long long time_now = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+  if (resizing_ && time_now - last_resize_time_ > RESIZE_TIMESPAN) {
+    last_frame_ = frame();
+    resizing_ = false;
+  }
+  return resizing_;
+}
+
+void Window::setResizing(bool resizing) {
+  last_frame_ = frame();
+  resizing_ = resizing;
+}
 
 void Window::update_state(const wm::WindowState::List &states) {
   if (!initialized.load() && !states.empty()) {
@@ -330,7 +354,6 @@ void Window::update_state(const wm::WindowState::List &states) {
         y == rect.top()) {
       return;
     }
-
     struct timeval now = (struct timeval) { 0 };
     gettimeofday(&now, NULL);
     long long current_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;

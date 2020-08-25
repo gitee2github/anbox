@@ -41,6 +41,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   static const long long USEC_PER_SEC = 1000000;
   static const long long APP_START_MAX_TIME = 15 * USEC_PER_SEC;
   static const long long timespan_db_click = 500000;
+  static const long long RESIZE_TIMESPAN = USEC_PER_SEC / 2;
 
   struct mini_size {
     int minimum_width;
@@ -77,6 +78,8 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   void update_state(const wm::WindowState::List &states) override;
 
   bool check_db_clicked(int x, int y);
+  bool checkResizeable() override;
+  void setResizing(bool resizing) override;
 
   void restore_window();
   Id id() const;
@@ -93,6 +96,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
 
   std::atomic<bool> initialized{false};
   long long last_update_time{ 0 };
+  long long last_resize_time_{ 0 };
   Id id_;
   std::shared_ptr<Observer> observer_;
   EGLNativeDisplayType native_display_;

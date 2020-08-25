@@ -48,51 +48,60 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
   for (auto &w : win_layers) {
     const auto &renderables = w.second;
     RenderableList final_renderables;
-    int top = 1080;
-    int left = 1920;
-
-    for (auto &r : renderables) {
-      // We always prioritize layers which are lower in the list we got
-      // from SurfaceFlinger as they are already ordered.
-      int current_left = r.screen_position().left();
-      int current_top = r.screen_position().top();
-      int half_diff = 2;
-      if (r.screen_position().width() > w.first->frame().width()) {
-        auto diff = r.screen_position().width() - w.first->frame().width();
-        current_left += diff / half_diff;
-      }
-      if (r.screen_position().height() > w.first->frame().height()) {
-        auto diff = r.screen_position().height() - w.first->frame().height();
-        current_top += diff / half_diff;
-      }
-
-      if (current_left < left) {
-        left = current_left;
-      }
-      if (current_top < top) {
-        top = current_top;
-      }
-    }
-
+    auto window_frame = w.first->frame();
+    bool resizeable = w.first->checkResizeable();
+    auto old_frame = w.first->last_frame();
+    int max_area = 0;
+    Rect max_rect;
     for (auto &r : renderables) {
       // As we get absolute display coordinates from the Android hwcomposer we
       // need to recalculate all layer coordinates into relatives ones to the
       // window they are drawn into.
       auto rect = Rect{
-          r.screen_position().left() - left + r.crop().left(),
-          r.screen_position().top() - top + r.crop().top(),
-          r.screen_position().right() - left + r.crop().left(),
-          r.screen_position().bottom() - top + r.crop().top()};
+          r.screen_position().left() - window_frame.left(),
+          r.screen_position().top() - window_frame.top(),
+          r.screen_position().right() - window_frame.left(),
+          r.screen_position().bottom() - window_frame.top()};
 
+      if (rect.width() * rect.height() > max_area) {
+        max_area = rect.width() * rect.height();
+        max_rect = Rect(r.screen_position().left() - old_frame.left(),
+                        r.screen_position().top() - old_frame.top(),
+                        r.screen_position().right() - old_frame.left(),
+                        r.screen_position().bottom() - old_frame.top());
+      }
       auto new_renderable = r;
       new_renderable.set_screen_position(rect);
       final_renderables.push_back(new_renderable);
     }
 
-    w.second = final_renderables;
-  }
+    bool changed = false;
+    if (resizeable) {
+      int max_old_area = 0;
+      Rect max_old_rect;
+      auto it = last_renderables.find(w.first);
+      if (it != last_renderables.end()) {
+        for (auto &rt : it->second) {
+          if (max_old_area < rt.screen_position().width() * rt.screen_position().height()) {
+            max_old_area = rt.screen_position().width() * rt.screen_position().height();
+            max_old_rect = rt.screen_position();
+          }
+        }
+      }
+      if (max_old_rect == max_rect) {
+        w.second = it->second;
+        changed = true;
+      } else {
+        w.first->setResizing(false);
+      }
+    }
 
-  return win_layers;
+    if(!changed) {
+      w.second = final_renderables;
+    }
+  }
+  last_renderables.swap(win_layers);
+  return last_renderables;
 }
 }  // namespace graphics
 }  // namespace anbox

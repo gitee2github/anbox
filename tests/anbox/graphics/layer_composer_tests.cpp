@@ -125,7 +125,7 @@ TEST(LayerComposer, MapsLayersToWindows) {
   };
 
   RenderableList second_window_renderables{
-      {"org.anbox.surface.2", 1, 1.0f, {0, 0, 1024, 768}, {0, 0, 1024, 768}},
+      {"org.anbox.surface.2", 1, 1.0f, {-300, -400, 724, 368}, {0, 0, 1024, 768}},
   };
 
   EXPECT_CALL(*renderer, draw(_, Rect{0, 0, first_window.frame().width(),
@@ -171,12 +171,12 @@ TEST(LayerComposer, WindowPartiallyOffscreen) {
   // but the layer covering the whole window is placed with its top left
   // origin outside of the visible display area.
   RenderableList renderables = {
-    {"org.anbox.surface.1", 0, 1.0f, {-100, -100, 924, 668}, {0, 0, 1024, 768}},
+    {"org.anbox.surface.1", 0, 1.0f, {0, 0, 924, 668}, {100, 100, 1024, 768}},
     {"org.anbox.surface.1", 1, 1.0f, {0, 0, 100, 200}, {0, 0, 100, 200}},
   };
 
   RenderableList expected_renderables{
-    {"org.anbox.surface.1", 0, 1.0f, {0, 0, 1024, 768}, {0, 0, 1024, 768}},
+    {"org.anbox.surface.1", 0, 1.0f, {100, 100, 1024, 768}, {100, 100, 1024, 768}},
     {"org.anbox.surface.1", 1, 1.0f, {100, 100, 200, 300}, {0, 0, 100, 200}},
   };
 
@@ -227,8 +227,8 @@ TEST(LayerComposer, PopupShouldNotCauseWindowLayerOffset) {
   };
 
   RenderableList expected_renderables{
-    {"org.anbox.surface.3", 0, 1.0f, {0, 24, 1024, 792}, {0, 0, 1024, 768}},
-    {"org.anbox.surface.3", 1, 1.0f, {784, 0, 1044, 160}, {0, 0, 260, 160}},
+    {"org.anbox.surface.3", 0, 1.0f, {0, 0, 1024, 768}, {0, 0, 1024, 768}},
+    {"org.anbox.surface.3", 1, 1.0f, {784, -24, 1044, 136}, {0, 0, 260, 160}},
   };
 
   EXPECT_CALL(*renderer, draw(_, Rect{0, 0,
@@ -241,5 +241,103 @@ TEST(LayerComposer, PopupShouldNotCauseWindowLayerOffset) {
   composer.submit_layers(renderables);
 }
 
+TEST(LayerComposer, ResizingShouldUseOldRender) {
+  auto renderer = std::make_shared<MockRenderer>();
+
+  platform::Configuration config;
+  // The default policy will create a dumb window instance when requested
+  // from the manager.
+  auto platform = platform::create(std::string(), nullptr, config);
+  auto app_db = std::make_shared<application::Database>();
+  auto wm = std::make_shared<wm::MultiWindowManager>(platform, nullptr, app_db);
+
+  auto single_window = wm::WindowState{
+      wm::Display::Id{1},
+      true,
+      graphics::Rect{1120, 270, 2144, 1038},
+      "org.anbox.foo",
+      wm::Task::Id{3},
+      wm::Stack::Id::Freeform,
+  };
+
+  auto window = platform->create_window(single_window.task(), single_window.frame(), single_window.package_name());
+  window->attach();
+  wm->insert_task(single_window.task(), window);
+
+  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
+
+  RenderableList renderables_first = {
+    {"org.anbox.surface.3", 0, 1.0f, {1120,270,2144,1038}, {0, 0, 1024, 768}},
+  };
+
+  composer.submit_layers(renderables_first);
+  window->update_frame(graphics::Rect{0, 0, 1024, 768});
+  window->setResizing(true);
+  composer.submit_layers(renderables_first);
+  RenderableList expected_renderables{
+    {"org.anbox.surface.3", 0, 1.0f, {0, 0, 1024, 768}, {0, 0, 1024, 768}},
+  };
+
+  EXPECT_CALL(*renderer, draw(_, Rect{0, 0,
+                                      single_window.frame().width(),
+                                      single_window.frame().height()},
+                              expected_renderables))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  composer.submit_layers(renderables_first);
+}
+
+TEST(LayerComposer, ResizeOverShouldUseNewRender) {
+  auto renderer = std::make_shared<MockRenderer>();
+
+  platform::Configuration config;
+  // The default policy will create a dumb window instance when requested
+  // from the manager.
+  auto platform = platform::create(std::string(), nullptr, config);
+  auto app_db = std::make_shared<application::Database>();
+  auto wm = std::make_shared<wm::MultiWindowManager>(platform, nullptr, app_db);
+
+  auto single_window = wm::WindowState{
+      wm::Display::Id{1},
+      true,
+      graphics::Rect{1120, 270, 2144, 1038},
+      "org.anbox.foo",
+      wm::Task::Id{3},
+      wm::Stack::Id::Freeform,
+  };
+
+  auto window = platform->create_window(single_window.task(), single_window.frame(), single_window.package_name());
+  window->attach();
+  wm->insert_task(single_window.task(), window);
+
+  LayerComposer composer(renderer, std::make_shared<MultiWindowComposerStrategy>(wm));
+
+  RenderableList renderables_first = {
+    {"org.anbox.surface.3", 0, 1.0f, {1120,270,2144,1038}, {0, 0, 1024, 768}},
+  };
+
+  RenderableList renderables_second = {
+    {"org.anbox.surface.3", 0, 1.0f, {0, 0, 1024, 768}, {0, 0, 1024, 768}},
+  };
+
+  composer.submit_layers(renderables_first);
+  window->update_frame(graphics::Rect{0, 0, 1024, 768});
+  window->setResizing(true);
+  composer.submit_layers(renderables_first);
+  RenderableList expected_renderables{
+    {"org.anbox.surface.3", 0, 1.0f, {0, 0, 1024, 768}, {0, 0, 1024, 768}},
+  };
+
+  EXPECT_CALL(*renderer, draw(_, Rect{0, 0,
+                                      single_window.frame().width(),
+                                      single_window.frame().height()},
+                              expected_renderables))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  composer.submit_layers(renderables_second);
+  EXPECT_TRUE(window->checkResizeable() == false);
+}
 }  // namespace graphics
 }  // namespace anbox
