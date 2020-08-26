@@ -53,15 +53,21 @@ class Window {
 
   virtual void update_state(const WindowState::List &states);
   void update_frame(const graphics::Rect &frame);
+  void update_last_frame(const graphics::Rect &frame);
 
   virtual bool title_event_filter(int y);
   void set_native_handle(const EGLNativeWindowType &handle);
   EGLNativeWindowType native_handle() const;
 
   graphics::Rect frame() const;
+  graphics::Rect last_frame() const;
   Task::Id task() const;
   std::string title() const;
-
+  virtual bool checkResizeable() { return resizing_; }
+  virtual void setResizing(bool resizing) { resizing_ = resizing; }
+ protected:
+  graphics::Rect last_frame_;
+  bool resizing_{false};
  private:
   EGLNativeWindowType native_window_;
   std::shared_ptr<Renderer> renderer_;

@@ -33,6 +33,7 @@ class MultiWindowComposerStrategy : public LayerComposer::Strategy {
 
 private:
   std::shared_ptr<wm::Manager> wm_;
+  WindowRenderableList last_renderables;
 };
 }  // namespace graphics
 }  // namespace anbox
