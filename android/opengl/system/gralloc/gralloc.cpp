@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <dlfcn.h>
 #include <sys/mman.h>
+#include "FormatConversions.h"
 #include "gralloc_cb.h"
 #include "HostConnection.h"
 #include "glUtils.h"
@@ -243,6 +244,9 @@ static int gralloc_alloc(alloc_device_t* dev,
             align = 16;
             bpp = 1; // per-channel bpp
             yuv_format = true;
+            // rgb2yuv in gralloc_lock(), yuv2rgb in gralloc_unlock()
+            glFormat = GL_RGB;
+            glType = GL_UNSIGNED_BYTE;
             // Not expecting to actually create any GL surfaces for this
             break;
         default:
@@ -614,12 +618,6 @@ static int gralloc_lock(gralloc_module_t const* module,
         return -EINVAL;
     }
 
-    // validate format
-    if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-        ALOGE("gralloc_lock can't be used with YCbCr_420_888 format");
-        return -EINVAL;
-    }
-
     // Validate usage,
     //   1. cannot be locked for hw access
     //   2. lock for either sw read or write.
@@ -686,9 +684,26 @@ static int gralloc_lock(gralloc_module_t const* module,
         }
 
         if (sw_read) {
-            D("gralloc_lock read back color buffer %d %d\n", cb->width, cb->height);
+            void* rgb_addr = cpu_addr;
+            char* tmpBuf = 0;
+            if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YV12 ||
+                cb->frameworkFormat == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+                // We are using RGB888
+                tmpBuf = new char[cb->width * cb->height * 3];
+                rgb_addr = tmpBuf;
+            }
+            D("gralloc_lock read back color buffer %d %d ashmem base %p sz %d\n",
+              cb->width, cb->height, cb->ashmemBase, cb->ashmemSize);
             rcEnc->rcReadColorBuffer(rcEnc, cb->hostHandle,
-                    0, 0, cb->width, cb->height, cb->glFormat, cb->glType, cpu_addr);
+                    0, 0, cb->width, cb->height, cb->glFormat, cb->glType, rgb_addr);
+            if (tmpBuf) {
+                if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YV12) {
+                    rgb888_to_yv12((char*)cpu_addr, tmpBuf, cb->width, cb->height, l, t, l+w-1, t+h-1);
+                } else if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+                    rgb888_to_yuv420p((char*)cpu_addr, tmpBuf, cb->width, cb->height, l, t, l+w-1, t+h-1);
+                }
+                delete [] tmpBuf;
+            }
         }
     }
 
@@ -715,6 +730,56 @@ static int gralloc_lock(gralloc_module_t const* module,
     return 0;
 }
 
+static void updateHostColorBuffer(cb_handle_t* cb,
+                              bool doLocked,
+                              char* pixels) {
+    D("%s: call. doLocked=%d", __FUNCTION__, doLocked);
+    DEFINE_HOST_CONNECTION;
+    int bpp = glUtilsPixelBitSize(cb->glFormat, cb->glType) >> 3;
+    int left = doLocked ? cb->lockedLeft : 0;
+    int top = doLocked ? cb->lockedTop : 0;
+    int width = doLocked ? cb->lockedWidth : cb->width;
+    int height = doLocked ? cb->lockedHeight : cb->height;
+
+    char* to_send = pixels;
+    uint32_t rgbSz = width * height * bpp;
+    uint32_t send_buffer_size = rgbSz;
+    bool is_rgb_format =
+        cb->frameworkFormat != HAL_PIXEL_FORMAT_YV12 &&
+        cb->frameworkFormat != HAL_PIXEL_FORMAT_YCbCr_420_888;
+
+    char* convertedBuf = NULL;
+    if ((doLocked && is_rgb_format) ||
+        ((doLocked || !is_rgb_format))) {
+        convertedBuf = new char[rgbSz];
+        to_send = convertedBuf;
+        send_buffer_size = rgbSz;
+    }
+
+    if (doLocked && is_rgb_format) {
+        copy_rgb_buffer_from_unlocked(
+                to_send, pixels,
+                cb->width,
+                width, height, top, left, bpp);
+    }
+
+    if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YV12) {
+        yv12_to_rgb888(to_send, pixels,
+                        width, height, left, top,
+                        left + width - 1, top + height - 1);
+    }
+    if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+        yuv420p_to_rgb888(to_send, pixels,
+                            width, height, left, top,
+                            left + width - 1, top + height - 1);
+    }
+    rcEnc->rcUpdateColorBuffer(rcEnc, cb->hostHandle,
+            left, top, width, height,
+            cb->glFormat, cb->glType, to_send);
+    
+    if (convertedBuf) delete [] convertedBuf;
+}
+
 static int gralloc_unlock(gralloc_module_t const* module,
                           buffer_handle_t handle)
 {
@@ -736,43 +801,23 @@ static int gralloc_unlock(gralloc_module_t const* module,
 
         // Make sure we have host connection
         DEFINE_AND_VALIDATE_HOST_CONNECTION;
-
-        void *cpu_addr;
+        
+        void *cpu_addr = nullptr;
         if (cb->canBePosted()) {
-            cpu_addr = (void *)(cb->ashmemBase + sizeof(int));
-        }
-        else {
+            cpu_addr = (void *)(cb->ashmemBase + sizeof(intptr_t));
+        } else {
             cpu_addr = (void *)(cb->ashmemBase);
         }
 
+        char* rgb_addr = (char *)cpu_addr;
         if (cb->lockedWidth < cb->width || cb->lockedHeight < cb->height) {
-            int bpp = glUtilsPixelBitSize(cb->glFormat, cb->glType) >> 3;
-            char *tmpBuf = new char[cb->lockedWidth * cb->lockedHeight * bpp];
-
-            int dst_line_len = cb->lockedWidth * bpp;
-            int src_line_len = cb->width * bpp;
-            char *src = (char *)cpu_addr + cb->lockedTop*src_line_len + cb->lockedLeft*bpp;
-            char *dst = tmpBuf;
-            for (int y=0; y<cb->lockedHeight; y++) {
-                memcpy(dst, src, dst_line_len);
-                src += src_line_len;
-                dst += dst_line_len;
-            }
-
-            rcEnc->rcUpdateColorBuffer(rcEnc, cb->hostHandle,
-                                       cb->lockedLeft, cb->lockedTop,
-                                       cb->lockedWidth, cb->lockedHeight,
-                                       cb->glFormat, cb->glType,
-                                       tmpBuf);
-
-            delete [] tmpBuf;
+            updateHostColorBuffer(cb, true, rgb_addr);
         }
         else {
-            rcEnc->rcUpdateColorBuffer(rcEnc, cb->hostHandle, 0, 0,
-                                       cb->width, cb->height,
-                                       cb->glFormat, cb->glType,
-                                       cpu_addr);
+            updateHostColorBuffer(cb, false, rgb_addr);
         }
+
+        DD("gralloc_unlock success. cpu_addr: %p", cpu_addr);
     }
 
     cb->lockedWidth = cb->lockedHeight = 0;
