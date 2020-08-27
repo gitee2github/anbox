@@ -115,7 +115,6 @@ private:
     int xrun(void);
     int suspend(void);
     void compute_max_peak(char *data, size_t count) const;
-    bool validateAudioDevice(std::string name) const;
 };
 }
 }
