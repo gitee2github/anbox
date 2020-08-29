@@ -319,7 +319,7 @@ void Platform::process_input_event(const SDL_Event &event) {
       for (auto &iter : windows_) {
         if (auto w = iter.second.lock()) {
           if (w->window_id() == event.window.windowID &&
-                  w->title_event_filter(event.button.y)) {
+                  w->title_event_filter(event.button.x, event.button.y)) {
             return;
           }
         }
