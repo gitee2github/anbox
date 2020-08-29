@@ -185,6 +185,10 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
 
   SDL_HitTestResult result = SDL_HITTEST_NORMAL;
 
+  if (!platform_window->initialized.load()) {
+    INFO("window initialized by resize");
+    platform_window->initialized = true;
+  }
   if (platform_window->title_event_filter(pt->x, pt->y)) {
     if (!platform_window->initialized.load()) {
       INFO("window initialized by click top");
