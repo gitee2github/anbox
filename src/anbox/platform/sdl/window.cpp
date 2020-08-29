@@ -50,7 +50,7 @@ static const std::uint32_t WX_MINI_WIDTH = 540;
 
 const std::map<std::string, std::uint32_t> Window::property_map = {
   {"腾讯视频", SHOW_ALL},
-  {"爱奇艺", SHOW_ALL}
+  {"爱奇艺HD", SHOW_ALL}
 };
 
 const std::map<std::string, Window::mini_size>Window::custom_window_map = {
