@@ -64,7 +64,7 @@ void Window::release() {
   renderer_->destroyNativeWindow(native_handle());
 }
 
-bool Window::title_event_filter(int y) {
+bool Window::title_event_filter(int x, int y) {
   return false;
 }
 }  // namespace wm

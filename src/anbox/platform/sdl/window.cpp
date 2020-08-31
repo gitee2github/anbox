@@ -156,9 +156,19 @@ Window::~Window() {
   if (window_) SDL_DestroyWindow(window_);
 }
 
-bool Window::title_event_filter(int point_y) {
-  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
-  return point_y < top_drag_area_height;
+bool Window::title_event_filter(int x, int y) {
+  std::vector<graphics::Rect> dis_area;
+  {
+    std::lock_guard<std::mutex> l(mutex_);
+    dis_area = dis_area_;
+  }
+  int cnt = 0;
+  for (auto &r : dis_area) {
+    if (x >= r.left() && x <= r.right() && y >= r.top() && y <= r.bottom()) {
+      cnt++;
+    }
+  }
+  return cnt == 1;
 }
 
 SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data) {
@@ -175,7 +185,11 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
 
   SDL_HitTestResult result = SDL_HITTEST_NORMAL;
 
-  if (pt->y <= top_drag_area_height) {
+  if (!platform_window->initialized.load()) {
+    INFO("window initialized by resize");
+    platform_window->initialized = true;
+  }
+  if (platform_window->title_event_filter(pt->x, pt->y)) {
     if (!platform_window->initialized.load()) {
       INFO("window initialized by click top");
       platform_window->initialized = true;
@@ -376,6 +390,22 @@ void Window::restore_window() {
   auto flags = SDL_GetWindowFlags(window_);
   if (flags & SDL_WINDOW_MINIMIZED) {
     SDL_RestoreWindow(window_);
+  }
+}
+
+void Window::set_dis_area(const std::vector<graphics::Rect> &rects) {
+  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
+  auto title = graphics::Rect{0, 0, frame().width(), top_drag_area_height};
+  std::vector<graphics::Rect> dis_area;
+  for (auto r : rects) {
+    auto tmp = r & title;
+    if (tmp.width() > 0 && tmp.height() > 0) {
+      dis_area.push_back(tmp);
+    }
+  }
+  {
+    std::lock_guard<std::mutex> l(mutex_);
+    dis_area_.swap(dis_area);
   }
 }
 } // namespace sdl

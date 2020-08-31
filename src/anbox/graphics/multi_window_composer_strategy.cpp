@@ -95,6 +95,13 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
         w.first->setResizing(false);
       }
     }
+    else {
+      std::vector<Rect> rects;
+      for (auto &r : final_renderables) {
+        rects.push_back(r.screen_position());
+      }
+      w.first->set_dis_area(rects);
+    }
 
     if(!changed) {
       w.second = final_renderables;
