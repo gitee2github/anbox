@@ -30,13 +30,15 @@ WindowState::WindowState()
 WindowState::WindowState(const Display::Id &display, bool has_surface,
                          const graphics::Rect &frame,
                          const std::string &package_name, const Task::Id &task,
-                         const Stack::Id &stack)
+                         const Stack::Id &stack,
+                         const bool videofullscreen)
     : display_(display),
       has_surface_(has_surface),
       frame_(frame),
       package_name_(package_name),
       task_(task),
-      stack_(stack) {}
+      stack_(stack),
+      videofullscreen_(videofullscreen) {}
 
 WindowState::~WindowState() {}
 }  // namespace wm

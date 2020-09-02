@@ -157,6 +157,9 @@ Window::~Window() {
 }
 
 bool Window::title_event_filter(int x, int y) {
+  if (fullscreen_) {
+    return false;
+  }
   std::vector<graphics::Rect> dis_area;
   {
     std::lock_guard<std::mutex> l(mutex_);
@@ -173,6 +176,10 @@ bool Window::title_event_filter(int x, int y) {
 
 SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data) {
   auto platform_window = reinterpret_cast<Window*>(data);
+
+  if (platform_window->get_fullscreen()) {
+    return SDL_HITTEST_NORMAL;
+  }
 
   int w = 0, h = 0;
   SDL_GetWindowSize(window, &w, &h);
@@ -344,6 +351,19 @@ void Window::setResizing(bool resizing) {
 }
 
 void Window::update_state(const wm::WindowState::List &states) {
+  for (auto ws : states)
+  {
+    if (!fullscreen_ && ws.videofullscreen()) {
+      SDL_SetWindowFullscreen(window_, SDL_WINDOW_FULLSCREEN_DESKTOP);
+      fullscreen_ = true;
+    } else if (fullscreen_ && !ws.videofullscreen()) {
+      SDL_SetWindowFullscreen(window_, 0);
+      fullscreen_ = false;
+    }
+    if (fullscreen_) {
+      return;
+    }
+  }
   if (!initialized.load() && !states.empty()) {
     int w = 0;
     int h = 0;
