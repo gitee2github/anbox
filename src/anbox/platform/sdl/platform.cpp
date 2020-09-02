@@ -313,16 +313,23 @@ void Platform::process_input_event(const SDL_Event &event) {
   std::int32_t x = 0;
   std::int32_t y = 0;
 
+  bool bFind = false;
   switch (event.type) {
     // Mouse
     case SDL_MOUSEBUTTONDOWN:
       for (auto &iter : windows_) {
         if (auto w = iter.second.lock()) {
-          if (w->window_id() == event.window.windowID &&
-                  w->title_event_filter(event.button.x, event.button.y)) {
-            return;
+          if (w->window_id() == event.window.windowID) {
+            if (w->title_event_filter(event.button.x, event.button.y)) {
+              return;
+            }
+            bFind = true;
+            break;
           }
         }
+      }
+      if (!bFind) {
+        return;
       }
       if (config_.no_touch_emulation) {
         mouse_events.push_back({EV_KEY, BTN_LEFT, 1});
