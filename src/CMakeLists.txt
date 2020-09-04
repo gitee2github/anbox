@@ -277,6 +277,8 @@ set(SOURCES
     anbox/platform/sdl/sdl_wrapper.h
     anbox/platform/sdl/window.cpp
     anbox/platform/sdl/window.h
+    anbox/platform/sdl/toast_window.cpp
+    anbox/platform/sdl/toast_window.h
 
     anbox/protobuf/anbox_bridge.proto
     anbox/protobuf/anbox_container.proto

@@ -89,5 +89,15 @@ std::string SingleWindowManager::get_title(const std::string &package_name) {
   (void)package_name;
   return "";
 }
+
+std::shared_ptr<Window> SingleWindowManager::update_toast_window(const anbox::graphics::Rect &rect) {
+  (void)rect;
+  return nullptr;
+}
+
+void SingleWindowManager::set_toast_window(std::shared_ptr<Window> tw) {
+  (void)tw;
+}
+
 }  // namespace wm
 }  // namespace anbox

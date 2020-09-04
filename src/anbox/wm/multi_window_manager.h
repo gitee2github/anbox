@@ -53,6 +53,8 @@ class MultiWindowManager : public Manager {
   void remove_task(const Task::Id &task) override;
   void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) override;
   void erase_task(const Task::Id &task) override;
+  std::shared_ptr<Window> update_toast_window(const anbox::graphics::Rect &rect) override;
+  void set_toast_window(std::shared_ptr<Window> tw) override;
 
   std::string get_title(const std::string &package_name) override;
  private:
@@ -61,6 +63,7 @@ class MultiWindowManager : public Manager {
   std::shared_ptr<bridge::AndroidApiStub> android_api_stub_;
   std::shared_ptr<application::Database> app_db_;
   std::map<Task::Id, std::shared_ptr<Window>> windows_;
+  std::shared_ptr<Window> toast_window_;
 };
 }  // namespace wm
 }  // namespace anbox

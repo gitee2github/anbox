@@ -150,5 +150,29 @@ std::string MultiWindowManager::get_title(const std::string &package_name) {
     return package_name;
   }
 }
+
+std::shared_ptr<Window> MultiWindowManager::update_toast_window(const anbox::graphics::Rect &rect) {
+  auto stack = wm::Stack::Id::Freeform;
+  if (rect == graphics::Rect(0, 0, 0, 0)) {
+    stack = wm::Stack::Id::Default;
+  }
+  auto update_window = wm::WindowState{
+      wm::Display::Id{0},
+      true,
+      rect,
+      "",
+      wm::Task::Id{0},
+      stack,
+  };
+  if (toast_window_) {
+    toast_window_->update_state({update_window});
+  }
+  return toast_window_;
+}
+
+void MultiWindowManager::set_toast_window(std::shared_ptr<Window> tw) {
+  toast_window_ = tw;
+}
+
 }  // namespace wm
 }  // namespace anbox

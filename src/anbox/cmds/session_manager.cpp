@@ -196,6 +196,7 @@ anbox::cmds::SessionManager::SessionManager()
 
     platform->set_window_manager(window_manager);
     platform->set_renderer(gl_server->renderer());
+    platform->create_toast_window();
     window_manager->setup();
     android_api_stub->set_platform(platform);
 

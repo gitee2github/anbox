@@ -26,6 +26,7 @@
 #include "anbox/platform/sdl/audio_sink.h"
 #include "anbox/platform/alsa/audio_source.h"
 #include "anbox/system_configuration.h"
+#include "anbox/platform/sdl/toast_window.h"
 
 #include "anbox/wm/manager.h"
 
@@ -153,6 +154,20 @@ Platform::~Platform() {
 
 void Platform::set_renderer(const std::shared_ptr<Renderer> &renderer) {
   renderer_ = renderer;
+}
+
+void Platform::create_toast_window() {
+  /* This is used to create window to show toast message in android. 
+   * In normal time, it is hided. When a toast frame comes in, show toast window.
+   * Run create_toast_window after set_renderer and set_window_manager, if not toast_window 
+   * will have no use.
+   */
+  auto w = std::make_shared<ToastWindow>(renderer_, anbox::graphics::Rect(0, 0, 0, 0));
+  if (window_manager_) {
+    window_manager_->set_toast_window(w);
+  } else {
+    WARNING("toast window set failed!!!");
+  }
 }
 
 void Platform::set_window_manager(const std::shared_ptr<wm::Manager> &window_manager) {

@@ -36,6 +36,7 @@ class NullPlatform : public BasePlatform {
   std::shared_ptr<audio::Source> create_audio_source() override;
   void set_renderer(const std::shared_ptr<Renderer> &renderer) override;
   void set_window_manager(const std::shared_ptr<wm::Manager> &window_manager) override;
+  void create_toast_window() override;
   bool supports_multi_window() const override;
   int get_user_window_event() const override;
   std::string ime_socket_file() const override;
