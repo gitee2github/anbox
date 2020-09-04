@@ -84,7 +84,8 @@ void PlatformApiSkeleton::handle_window_state_update_event(const anbox::protobuf
         graphics::Rect(window.frame_left(), window.frame_top(),
                        window.frame_right(), window.frame_bottom()),
         window.package_name(), wm::Task::Id(window.task_id()),
-        wm::Stack::Id(window.stack_id()));
+        wm::Stack::Id(window.stack_id()),
+        window.has_videofullscreen() && window.videofullscreen());
   };
 
   wm::WindowState::List updated;

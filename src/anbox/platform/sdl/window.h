@@ -83,6 +83,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   void setResizing(bool resizing) override;
 
   void restore_window();
+  bool get_fullscreen() { return fullscreen_; }
   Id id() const;
   std::uint32_t window_id() const;
   Uint32 GetWindowFlags(){return SDL_GetWindowFlags(window_);}
@@ -111,6 +112,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   std::uint32_t visible_property;
   std::vector<graphics::Rect> dis_area_;
   std::mutex mutex_;
+  bool fullscreen_ = false;
 };
 } // namespace sdl
 } // namespace platform

@@ -87,5 +87,10 @@ std::string NullPlatform::ime_socket_file() const {
   ERROR("Not implemented");
   return "";
 }
+
+void NullPlatform::create_toast_window() {
+  ERROR("Not implemented");
+}
+
 }  // namespace wm
 }  // namespace anbox

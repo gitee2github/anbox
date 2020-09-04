@@ -64,6 +64,7 @@ void PlatformApiStub::update_window_state(const WindowStateUpdate &state) {
         out->set_frame_bottom(in.frame.bottom);
         out->set_task_id(in.task_id);
         out->set_stack_id(in.stack_id);
+        out->set_videofullscreen(false);
     };
 
     for (const auto &window : state.updated_windows) {

@@ -18,6 +18,7 @@
 #include "anbox/graphics/multi_window_composer_strategy.h"
 #include "anbox/wm/manager.h"
 #include "anbox/utils.h"
+#include "anbox/logger.h"
 
 namespace anbox {
 namespace graphics {
@@ -25,10 +26,27 @@ MultiWindowComposerStrategy::MultiWindowComposerStrategy(const std::shared_ptr<w
 
 std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrategy::process_layers(const RenderableList &renderables) {
   WindowRenderableList win_layers;
+  bool bGetToast = false;  // if don't have toast frame, tell wm to hide toast_window
   for (const auto &renderable : renderables) {
     // Ignore all surfaces which are not meant for a task
-    if (!utils::string_starts_with(renderable.name(), "org.anbox.surface."))
+    if (renderable.name() == "Toast") {
+      if (bGetToast) {
+        WARNING("Toast! toast choosed");
+        continue;
+      }
+      auto w = wm_->update_toast_window(renderable.screen_position());
+      if (w) {
+        win_layers.insert({w, {renderable}});
+      } else {
+        ERROR("Toast! get toast window error");
+	continue;
+      }
+      bGetToast = true;
       continue;
+    }
+    if (!utils::string_starts_with(renderable.name(), "org.anbox.surface.")) {
+      continue;
+    }
 
     wm::Task::Id task_id = 0;
     if (sscanf(renderable.name().c_str(), "org.anbox.surface.%d", &task_id) != 1 || !task_id)
@@ -36,13 +54,15 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
 
     auto w = wm_->find_window_for_task(task_id);
     if (!w) continue;
-
     if (win_layers.find(w) == win_layers.end()) {
       win_layers.insert({w, {renderable}});
       continue;
     }
 
     win_layers[w].push_back(renderable);
+  }
+  if (!bGetToast) { // hide toast window
+    wm_->update_toast_window(Rect(0, 0, 0, 0));
   }
 
   for (auto &w : win_layers) {
