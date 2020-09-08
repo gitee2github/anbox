@@ -90,7 +90,6 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   inline std::uint32_t get_property() {
       return visible_property;
   }
-  void set_dis_area(const std::vector<graphics::Rect> &rects) override;
 
  private:
   static SDL_HitTestResult on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data);
@@ -110,8 +109,6 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   int last_wnd_x{ 0 };
   int last_wnd_y{ 0 };
   std::uint32_t visible_property;
-  std::vector<graphics::Rect> dis_area_;
-  std::mutex mutex_;
   bool fullscreen_ = false;
 };
 } // namespace sdl

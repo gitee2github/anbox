@@ -157,21 +157,8 @@ Window::~Window() {
 }
 
 bool Window::title_event_filter(int x, int y) {
-  if (fullscreen_) {
-    return false;
-  }
-  std::vector<graphics::Rect> dis_area;
-  {
-    std::lock_guard<std::mutex> l(mutex_);
-    dis_area = dis_area_;
-  }
-  int cnt = 0;
-  for (auto &r : dis_area) {
-    if (x >= r.left() && x <= r.right() && y >= r.top() && y <= r.bottom()) {
-      cnt++;
-    }
-  }
-  return cnt == 1;
+  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
+  return !fullscreen_ && y <= top_drag_area_height;
 }
 
 SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data) {
@@ -413,21 +400,6 @@ void Window::restore_window() {
   }
 }
 
-void Window::set_dis_area(const std::vector<graphics::Rect> &rects) {
-  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
-  auto title = graphics::Rect{0, 0, frame().width(), top_drag_area_height};
-  std::vector<graphics::Rect> dis_area;
-  for (auto r : rects) {
-    auto tmp = r & title;
-    if (tmp.width() > 0 && tmp.height() > 0) {
-      dis_area.push_back(tmp);
-    }
-  }
-  {
-    std::lock_guard<std::mutex> l(mutex_);
-    dis_area_.swap(dis_area);
-  }
-}
 } // namespace sdl
 } // namespace platform
 } // namespace anbox

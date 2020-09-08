@@ -59,17 +59,6 @@ class Rect {
             bottom_ == rhs.bottom());
   }
 
-  Rect operator&(const Rect &rhs) const {
-    int left = left_ > rhs.left() ? left_ : rhs.left();
-    int right = right_ < rhs.right() ? right_ : rhs.right();
-    int top = top_ > rhs.top() ? top_ : rhs.top();
-    int bottom = bottom_ < rhs.bottom() ? bottom_ : rhs.bottom();
-    if (right <= left || bottom <= top) {
-      return Rect(0, 0, 0, 0);
-    }
-    return Rect(left, top, right, bottom);
-  }
-
   inline bool operator!=(const Rect &rhs) const { return !operator==(rhs); }
 
   void merge(const Rect &rhs);
