@@ -102,7 +102,7 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
       auto it = last_renderables.find(w.first);
       if (it != last_renderables.end()) {
         for (auto &rt : it->second) {
-          if (max_old_area < rt.screen_position().width() * rt.screen_position().height()) {
+          if (max_old_area <= rt.screen_position().width() * rt.screen_position().height()) {
             max_old_area = rt.screen_position().width() * rt.screen_position().height();
             max_old_rect = rt.screen_position();
           }
@@ -114,13 +114,6 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
       } else {
         w.first->setResizing(false);
       }
-    }
-    else {
-      std::vector<Rect> rects;
-      for (auto &r : final_renderables) {
-        rects.push_back(r.screen_position());
-      }
-      w.first->set_dis_area(rects);
     }
 
     if(!changed) {

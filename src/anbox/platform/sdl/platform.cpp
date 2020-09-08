@@ -298,11 +298,17 @@ void Platform::user_event_function(const SDL_Event &event) {
           window_manager_->remove_task(param->taskId);
         }
       } else if (event_type == USER_DESTROY_WINDOW) {
+        {
+          auto w = window_manager_->find_window_for_task(param->taskId);
+          if (w) {
+            w->destroy_window();
+          }
+        }
         window_manager_->erase_task(param->taskId);
         auto it = tasks_.find(param->taskId);
         if (it != tasks_.end()) {
-            windows_.erase(it->second);
-            tasks_.erase(it);
+          windows_.erase(it->second);
+          tasks_.erase(it);
         }
       }
       delete param;
