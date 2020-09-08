@@ -49,7 +49,7 @@ bool AudioSink::connect_audio() {
     return true;
 
   SDL_memset(&spec_, 0, sizeof(spec_));
-  spec_.freq = 44100;
+  spec_.freq = 48000;
   spec_.format = AUDIO_S16;
   spec_.channels = 2;
   spec_.samples = 1024;
