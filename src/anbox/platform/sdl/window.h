@@ -90,6 +90,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   inline std::uint32_t get_property() {
       return visible_property;
   }
+  void destroy_window() override;
 
  private:
   static SDL_HitTestResult on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data);

@@ -152,8 +152,13 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   SDL_ShowWindow(window_);
 }
 
-Window::~Window() {
-  if (window_) SDL_DestroyWindow(window_);
+Window::~Window() {}
+
+void Window::destroy_window() {
+  if (window_) {
+    SDL_DestroyWindow(window_);
+    window_ = NULL;
+  }
 }
 
 bool Window::title_event_filter(int x, int y) {

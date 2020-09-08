@@ -65,6 +65,7 @@ class Window {
   std::string title() const;
   virtual bool checkResizeable() { return resizing_; }
   virtual void setResizing(bool resizing) { resizing_ = resizing; }
+  virtual void destroy_window() {}
  protected:
   graphics::Rect last_frame_;
   bool resizing_{false};
