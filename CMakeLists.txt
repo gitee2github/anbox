@@ -11,12 +11,19 @@ endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -Wno-variadic-macros -Wextra -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -Wno-variadic-macros -Wextra -fPIC -fPIE -pie -fstack-protector-strong -Wtrampolines")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-z,relro")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-z,now")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-z,noexecstack")
 
 # By default, all symbols are visible in the library. We strip out things we don't
 # want at link time, by running a version script (see unity-scopes.map and the
 # setting of LINK_FLAGS below).
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIE -pie -fstack-protector-strong -Wtrampolines")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-z,relro")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-z,now")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,-z,noexecstack")
 
 set(C_AND_CXX_WARNINGS "-pedantic -Wall -Wextra")
 
@@ -151,6 +158,7 @@ if (SNAP_CONFINEMENT)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_SNAP_CONFINEMENT")
 endif()
 
+
 install(FILES data/ui/loading-screen.png DESTINATION ${ANBOX_RESOURCE_DIR}/ui)
 install(FILES data/ui/logo.png DESTINATION ${ANBOX_RESOURCE_DIR}/ui)
 install(PROGRAMS scripts/anbox-bridge.sh DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -162,3 +170,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
                IMMEDIATE @ONLY)
 add_custom_target(uninstall "${CMAKE_COMMAND}"
                   -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
+
+message( STATUS  "============================================>>> CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+message( STATUS  "============================================>>> CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message( STATUS  "============================================>>> CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
