@@ -364,7 +364,7 @@ void Window::update_state(const wm::WindowState::List &states) {
     SDL_GetWindowSize(window_, &w, &h);
     SDL_GetWindowPosition(window_, &x, &y);
 
-    graphics::Rect rect;
+    graphics::Rect rect = frame();
     int area = w * h;
     for (auto ws : states)
     {
