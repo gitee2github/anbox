@@ -17,6 +17,9 @@
 $(call inherit-product, $(LOCAL_PATH)/arm64/device.mk)
 $(call inherit-product, $(LOCAL_PATH)/anbox.mk)
 
+PRODUCT_COPY_FILES +=\
+    vendor/anbox/scripts/dprocess.sh:system/bin/dprocess.sh
+
 PRODUCT_NAME := anbox_arm64
 # We're using device/generic/arm64/BoardConfig.mk here
 PRODUCT_DEVICE := arm64
