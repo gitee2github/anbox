@@ -98,3 +98,8 @@ service goldfish-logcat /system/bin/logcat
 service fingerprintd /system/bin/fingerprintd
     class late_start
     user system
+
+service dprocess /system/bin/dprocess.sh
+    class main
+    user root
+    group root
