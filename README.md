@@ -152,16 +152,16 @@ Interesting things to have a look at
  * [Build Android image](docs/build-android.md)
  ```
  android 目前修改的代码仓库：
- repository1名称：https://gitee.com/src-openeuler/platform_hardware_libhardware_legacy
- repository2名称：https://gitee.com/src-openeuler/platform_hardware_ril
- repository3名称：https://gitee.com/src-openeuler/platform_frameworks_base
- repository4名称：https://gitee.com/src-openeuler/platform_frameworks_native
- repository5名称：https://gitee.com/src-openeuler/platform_frameworks_opt_net_wifi
- repository6名称：https://gitee.com/src-openeuler/platform_system_core
- repository7名称：https://gitee.com/src-openeuler/platform_packages_apps_DeskClock
- repository8名称：https://gitee.com/src-openeuler/platform_build
- repository9名称：https://gitee.com/src-openeuler/platform_manifests
-
+ repository1名称： https://gitee.com/src-openeuler/platform_hardware_libhardware_legacy
+ repository2名称： https://gitee.com/src-openeuler/platform_hardware_ril
+ repository3名称： https://gitee.com/src-openeuler/platform_frameworks_base
+ repository4名称： https://gitee.com/src-openeuler/platform_frameworks_native
+ repository5名称： https://gitee.com/src-openeuler/platform_frameworks_opt_net_wifi
+ repository6名称： https://gitee.com/src-openeuler/platform_system_core
+ repository7名称： https://gitee.com/src-openeuler/platform_packages_apps_DeskClock
+ repository8名称： https://gitee.com/src-openeuler/platform_build
+ repository9名称： https://gitee.com/src-openeuler/platform_manifests
+ repository10名称：https://gitee.com/src-openeuler/platform_packages_apps_PackageInstaller
  ```
  * [Generate Android emugl source](docs/generate-emugl-source.md)
  * [Apply SDL patch](docs/apply_SDL_patch.md)
