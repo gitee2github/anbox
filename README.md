@@ -128,6 +128,13 @@ $ make -j8
 
 ```
 
+If you want to choose a version， please do：
+
+$ git clone https://gitee.com/openeuler/anbox -b anbox-v1.0-rc3
+
+The version anbox-v1.0-rc3 will update in the future， make sure it matches the version of AOSP(see build-android.md).
+
+
 A simple
 
 ```
