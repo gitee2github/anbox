@@ -11,10 +11,16 @@ Currently, anbox based on SDL2, so our patches are based on SDL2. You can downlo
 ## Apply SDL patch
 
 ```
-1. Unzip the files you downloaded
-2. cd <your dir>/libsdl2-2.0.9+dfsg1
-3. patch -p1 < <your dir>/<patch name>.patch
-4. dpkg-buildpackage -rfakeroot -b
-5. cd ..
-6. dpkg -i ./*.deb
+$ mkdir -p /home/compile/sdl
+$ cd /home/compile/sdl
+$ apt-get source libsdl2-2.0-0
+$ apt-get install fakeroot dpkg-dev build-essential
+$ apt-get build-dep libsdl2-2.0-0
+$ cd libsdl2-2.0.9+dfsg1
+$ patch -p1 < /home/compile/anbox/external/libSDL/SDL_fix_Chinese_input.patch
+$ patch -p1 < /home/compile/anbox/external/libSDL/SDL_fix_clipboard_crash_issuse.patch
+$ patch -p1 </home/compile/anbox/external/libSDL/SDL_fix_Restore.patch
+$ dpkg-buildpackage -rfakeroot -b
+$ cd ..
+$ dpkg -i ./*.deb
 ```

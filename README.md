@@ -1,7 +1,8 @@
-[![Snap Status](https://build.snapcraft.io/badge/anbox/anbox.svg)](https://build.snapcraft.io/user/anbox/anbox)
-[![Build Status](https://travis-ci.org/anbox/anbox.svg?branch=master)](https://travis-ci.org/anbox/anbox)
-
 # Anbox
+
+This code repository is forked from https://github.com/anbox/anbox and 
+will be maintained under openEuler android middleware community.We aim 
+to run anbox on Arm PC natively.
 
 Anbox is a container-based approach to boot a full Android system on a
 regular GNU/Linux system like Ubuntu. In other words: Anbox will let
@@ -37,27 +38,25 @@ The Android runtime environment ships with a minimal customized Android system
 image based on the [Android Open Source Project](https://source.android.com/).
 The used image is currently based on Android 7.1.1
 
-## Installation
-
-See our [installation instructions](docs/install.md) for details.
-
 ## Supported Linux Distributions
 
 At the moment we officially support the following Linux distributions:
 
  * Ubuntu 16.04 (xenial)
  * Ubuntu 18.04 (bionic)
+ * UOS
 
-However all other distributions supporting snap packages should work as
+However all other distributions should work as
 well as long as they provide the mandatory kernel modules (see kernel/).
 
-## Install and Run Android Applications
+ * [Release notes](docs/release-notes/anbox-release-notes.md)
 
-TBD
 
 ## Build from source
 
 ### Requirements
+
+It is recommended that the machine run on the ARM64 architecture.
 
 To build the Anbox runtime itself there is nothing special to know. We're using
 cmake as build system. A few build dependencies need to be present on your host
@@ -98,19 +97,43 @@ $ sudo apt install build-essential cmake cmake-data debhelper dbus google-mock \
 ```
 We recommend Ubuntu 18.04 (bionic) with **GCC 7.x** as your build environment.
 
+On an UOS system you can install all build dependencies with the following
+command:
+
+```
+$ sudo apt install gcc libncurses-dev bison flex libssl-dev cmake dkms build-essential \
+    cmake-data debhelper dbus google-mock libboost-dev libboost-filesystem-dev libboost-log-dev \
+    libboost-iostreams-dev libboost-program-options-dev libboost-thread-dev libcap-dev \
+    libsystemd-dev libegl1-mesa-dev libgles2-mesa-dev libglm-dev libgtest-dev liblxc1 \
+    libproperties-cpp-dev libprotobuf-dev libsdl2-dev libsdl2-image-dev lxc-dev libdw-dev \
+    libbfd-dev libdwarf-dev pkg-config protobuf-compiler libboost-test-dev
+```
 
 ### Build
+
+ * [Build Android image](docs/build-android.md)
+ * [Apply SDL patch](docs/apply_SDL_patch.md)
+ * [Install binder & ashmem module](docs/kernel_module.md)
 
 Afterwards you can build Anbox with
 
 ```
-$ git clone https://github.com/anbox/anbox.git
+$ git clone https://gitee.com/openeuler/anbox
 $ cd anbox
 $ mkdir build
 $ cd build
-$ cmake ..
-$ make
+$ cmake .. -DCMAKE_CXX_FLAGS="-DENABLE_TOUCH_INPUT -Wno-error=implicit-fallthrough \
+    -Wno-error=missing-field-initializers" -DCMAKE_BUILD_TYPE=Release -DWerror=OFF
+$ make -j8
+
 ```
+
+If you want to choose a version， please do：
+
+$ git clone https://gitee.com/openeuler/anbox -b anbox-v1.0-rc3
+
+The version anbox-v1.0-rc3 will update in the future， make sure it matches the version of AOSP(see build-android.md).
+
 
 A simple
 
@@ -120,26 +143,28 @@ $ sudo make install
 
 will install the necessary bits into your system.
 
-If you want to build the anbox snap instead you can do this with the following
-steps:
-
-```
-$ mkdir android-images
-$ cp /path/to/android.img android-images/android.img
-$ snapcraft
-```
-
-The result will be a .snap file you can install on a system supporting snaps
-
-```
-$ snap install --dangerous --devmode anbox_1_amd64.snap
-```
-
 ## Run Anbox
 
-Running Anbox from a local build requires a few more things you need to know
-about. Please have a look at the ["Runtime Setup"](docs/runtime-setup.md)
-documentation.
+Step1：start container manager，run the commands as the ROOT user.
+
+```
+$ bash /usr/local/bin/anbox-bridge.sh start
+$ anbox container-manager --android-image=/<your path>/android.img \
+         --data-path=/<your path>/anbox-data --privileged --daemon &
+
+```
+
+Step2：start session manager，run the commands as the NON-ROOT user， 
+and run the shell terminal opened from desktop UI.
+
+```
+$ export EGL_PLATFORM=x11
+$ export EGL_LOG_LEVEL=fatal
+$ anbox session-manager  --gles-driver=host &
+
+```
+
+Wait 30s, open Android APP in "other applications" in the app menu.
 
 ## Documentation
 
@@ -149,32 +174,15 @@ of the project source.
 Interesting things to have a look at
 
  * [Runtime Setup](docs/runtime-setup.md)
- * [Build Android image](docs/build-android.md)
- ```
- android 目前修改的代码仓库：
- repository1名称： https://gitee.com/src-openeuler/platform_hardware_libhardware_legacy
- repository2名称： https://gitee.com/src-openeuler/platform_hardware_ril
- repository3名称： https://gitee.com/src-openeuler/platform_frameworks_base
- repository4名称： https://gitee.com/src-openeuler/platform_frameworks_native
- repository5名称： https://gitee.com/src-openeuler/platform_frameworks_opt_net_wifi
- repository6名称： https://gitee.com/src-openeuler/platform_system_core
- repository7名称： https://gitee.com/src-openeuler/platform_packages_apps_DeskClock
- repository8名称： https://gitee.com/src-openeuler/platform_build
- repository9名称： https://gitee.com/src-openeuler/platform_manifests
- repository10名称：https://gitee.com/src-openeuler/platform_packages_apps_PackageInstaller
- ```
- * [Generate Android emugl source](docs/generate-emugl-source.md)
- * [Apply SDL patch](docs/apply_SDL_patch.md)
- * [Release notes](docs/release-notes/anbox-release-notes.md)
 
 ## Reporting bugs
 
-If you have found an issue with Anbox, please [file a bug](https://github.com/anbox/anbox/issues/new).
+If you have found an issue with Anbox, please [file a bug](https://gitee.com/openeuler/anbox/issues).
 
 ## Get in Touch
 
-If you want to get in contact with the developers please feel free to join the
-*#anbox* IRC channel on [Freenode](https://freenode.net/).
+Find maintainer here:
+https://gitee.com/openeuler/community/tree/master/sig/sig-android-middleware
 
 ## Copyright and Licensing
 
