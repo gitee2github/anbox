@@ -15,6 +15,7 @@ ToastWindow::ToastWindow(const std::shared_ptr<Renderer> &renderer, const graphi
   }
 
   SDL_SysWMinfo info;
+  memset(&info, 0, sizeof(struct SDL_SysWMinfo));
   SDL_VERSION(&info.version);
   SDL_GetWindowWMInfo(window_, &info);
   switch (info.subsystem) {
