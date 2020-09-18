@@ -58,13 +58,13 @@ TEST(BufferQueue, TryPopLocked) {
     EXPECT_EQ(0, queue.try_push_locked(Buffer("World")));
 
     EXPECT_EQ(0, queue.try_pop_locked(&buffer));
-    EXPECT_STREQ("Hello", buffer.data());
+    EXPECT_STREQ("Hello", reinterpret_cast<const char*>(buffer.data()));
 
     EXPECT_EQ(0, queue.try_pop_locked(&buffer));
-    EXPECT_STREQ("World", buffer.data());
+    EXPECT_STREQ("World", reinterpret_cast<const char*>(buffer.data()));
 
     EXPECT_EQ(-EAGAIN, queue.try_pop_locked(&buffer));
-    EXPECT_STREQ("World", buffer.data());
+    EXPECT_STREQ("World", reinterpret_cast<const char*>(buffer.data()));
 }
 
 TEST(BufferQueue, TryPopLockedOnClosedQueue) {
@@ -77,17 +77,17 @@ TEST(BufferQueue, TryPopLockedOnClosedQueue) {
     EXPECT_EQ(0, queue.try_push_locked(Buffer("World")));
 
     EXPECT_EQ(0, queue.try_pop_locked(&buffer));
-    EXPECT_STREQ("Hello", buffer.data());
+    EXPECT_STREQ("Hello", reinterpret_cast<const char*>(buffer.data()));
 
     // Closing the queue doesn't prevent popping existing items, but
     // will generate -EIO once it is empty.
     queue.close_locked();
 
     EXPECT_EQ(0, queue.try_pop_locked(&buffer));
-    EXPECT_STREQ("World", buffer.data());
+    EXPECT_STREQ("World", reinterpret_cast<const char*>(buffer.data()));
 
     EXPECT_EQ(-EIO, queue.try_pop_locked(&buffer));
-    EXPECT_STREQ("World", buffer.data());
+    EXPECT_STREQ("World", reinterpret_cast<const char*>(buffer.data()));
 }
 
 namespace {
@@ -242,7 +242,7 @@ TEST(BufferQueue, PushLockedWithClosedQueue) {
     Buffer buffer;
     ASSERT_TRUE(thread.start_pop());
     EXPECT_EQ(0, thread.end_pop(&buffer));
-    EXPECT_STREQ("Hello", buffer.data());
+    EXPECT_STREQ("Hello", reinterpret_cast<const char*>(buffer.data()));
 
     thread.stop();
 }
@@ -260,7 +260,7 @@ TEST(BufferQueue, PopLocked) {
       std::unique_lock<std::mutex> l(lock);
       Buffer buffer;
       EXPECT_EQ(0, queue.pop_locked(&buffer, l));
-      EXPECT_STREQ("Hello World", buffer.data());
+      EXPECT_STREQ("Hello World", reinterpret_cast<const char*>(buffer.data()));
     }
 
     thread.stop();
@@ -286,10 +286,10 @@ TEST(BufferQueue, PopLockedWithClosedQueue) {
       std::unique_lock<std::mutex> l(lock);
       Buffer buffer;
       EXPECT_EQ(0, queue.pop_locked(&buffer, l));
-      EXPECT_STREQ("Hello World", buffer.data());
+      EXPECT_STREQ("Hello World", reinterpret_cast<const char*>(buffer.data()));
 
       EXPECT_EQ(-EIO, queue.pop_locked(&buffer, l));
-      EXPECT_STREQ("Hello World", buffer.data());
+      EXPECT_STREQ("Hello World", reinterpret_cast<const char*>(buffer.data()));
     }
 
     thread.stop();

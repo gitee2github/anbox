@@ -23,7 +23,7 @@
 
 namespace anbox {
 namespace graphics {
-using Buffer = anbox::common::SmallFixedVector<char, 512>;
+using Buffer = anbox::common::SmallFixedVector<std::uint8_t, 512>;
 
 class BufferQueue {
  public:

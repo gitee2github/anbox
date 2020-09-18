@@ -64,7 +64,7 @@ const unsigned char *BufferedIOStream::read(void *buf, size_t *inout_len) {
     if (read_buffer_left_ > 0) {
       size_t avail = std::min<size_t>(wanted - count, read_buffer_left_);
       memcpy(dst + count,
-             read_buffer_.data() + (read_buffer_.size() - read_buffer_left_),
+             reinterpret_cast<const char*>(read_buffer_.data() + (read_buffer_.size() - read_buffer_left_)),
              avail);
       count += avail;
       read_buffer_left_ -= avail;
@@ -121,7 +121,7 @@ void BufferedIOStream::thread_main() {
     auto bytes_left = buffer.size();
     while (bytes_left > 0) {
       const auto written = messenger_->send_raw(
-          buffer.data() + (buffer.size() - bytes_left), bytes_left);
+          reinterpret_cast<const char*>(buffer.data() + (buffer.size() - bytes_left)), bytes_left);
       if (written < 0) {
         if (errno != EINTR && errno != EAGAIN) {
           ERROR("Failed to write data: %s", std::strerror(errno));
