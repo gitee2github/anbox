@@ -76,9 +76,6 @@ Credentials BaseSocketMessenger<stream_protocol>::creds() const {
 template <typename stream_protocol>
 ssize_t BaseSocketMessenger<stream_protocol>::send_raw(char const* data,
                                                        size_t length) {
-  VariableLengthArray<serialization_buffer_size> whole_message{length};
-  std::copy(data, data + length, whole_message.data());
-
   std::unique_lock<std::mutex> lg(message_lock);
   return ::send(socket_fd, data, length, MSG_NOSIGNAL);
 }
