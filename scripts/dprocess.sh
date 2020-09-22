@@ -24,6 +24,7 @@ function orphanProcess(){
                 process_id=`ps | grep $process | grep  " 1 " | sed -n ${i}p | xargs -n1 | sed -n 2p`
                 date >> $logdir/orphanprocesslog.txt
                 ps | grep $process | grep  " 1 " >> $logdir/orphanprocesslog.txt
+                sync
                 kill -9 $process_id
             done
         fi
@@ -45,6 +46,7 @@ function emptyProcess(){
         if [ $process_tasknum -ne 0 ] && [ $process_stacknum -eq 0 ];then
             date >> $logdir/emptyprocesslog.txt
             ps | grep $process >> $logdir/emptyprocesslog.txt
+            sync
             am force-stop $process
         fi
     done
