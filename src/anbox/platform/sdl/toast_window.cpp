@@ -64,6 +64,9 @@ void ToastWindow::update_state(const wm::WindowState::List &states) {
   }
   SDL_ShowWindow(window_);
 }
+
+std::uint32_t ToastWindow::window_id() const { return SDL_GetWindowID(window_); }
+
 } // namespace sdl
 } // namespace platform
 } // namespace anbox

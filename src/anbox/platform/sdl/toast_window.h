@@ -17,6 +17,7 @@ class ToastWindow : public std::enable_shared_from_this<ToastWindow>, public wm:
   ~ToastWindow();
 
   void update_state(const wm::WindowState::List &states) override;
+  std::uint32_t window_id() const;
 
  private:
   SDL_Window *window_;

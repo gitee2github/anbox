@@ -26,7 +26,6 @@
 #include "anbox/platform/sdl/audio_sink.h"
 #include "anbox/platform/alsa/audio_source.h"
 #include "anbox/system_configuration.h"
-#include "anbox/platform/sdl/toast_window.h"
 
 #include "anbox/wm/manager.h"
 
@@ -167,6 +166,9 @@ void Platform::create_toast_window() {
     window_manager_->set_toast_window(w);
   } else {
     WARNING("toast window set failed!!!");
+  }
+  if (w) {
+    toast_ = w;
   }
 }
 
@@ -350,6 +352,11 @@ void Platform::process_input_event(const SDL_Event &event) {
           }
         }
       }
+      if (auto toast = toast_.lock()) {
+        if (toast->window_id() == event.window.windowID) {
+          bFind = true;
+        }
+      }
       if (!bFind) {
         return;
       }
@@ -358,7 +365,7 @@ void Platform::process_input_event(const SDL_Event &event) {
       } else {
         x = event.button.x;
         y = event.button.y;
-        if (!adjust_coordinates(x, y))
+        if (!adjust_coordinates(SDL_GetWindowFromID(event.window.windowID), x, y))
           break;
         push_finger_down(x, y, emulated_touch_id_, touch_events);
       }
