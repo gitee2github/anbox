@@ -25,20 +25,23 @@ WindowState::WindowState()
       frame_(graphics::Rect::Invalid),
       package_name_(""),
       task_(Task::Invalid),
-      stack_(Stack::Id::Invalid) {}
+      stack_(Stack::Id::Invalid),
+      flags_(-1) {}
 
 WindowState::WindowState(const Display::Id &display, bool has_surface,
                          const graphics::Rect &frame,
                          const std::string &package_name, const Task::Id &task,
                          const Stack::Id &stack,
-                         const bool videofullscreen)
+                         const bool videofullscreen,
+                         const int32_t flags)
     : display_(display),
       has_surface_(has_surface),
       frame_(frame),
       package_name_(package_name),
       task_(task),
       stack_(stack),
-      videofullscreen_(videofullscreen) {}
+      videofullscreen_(videofullscreen),
+      flags_(flags) {}
 
 WindowState::~WindowState() {}
 }  // namespace wm

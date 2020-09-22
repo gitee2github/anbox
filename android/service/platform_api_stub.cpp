@@ -65,6 +65,7 @@ void PlatformApiStub::update_window_state(const WindowStateUpdate &state) {
         out->set_task_id(in.task_id);
         out->set_stack_id(in.stack_id);
         out->set_videofullscreen(false);
+        out->set_flags(1); // window has DecorCaption title when flags = 1, otherwise 0
     };
 
     for (const auto &window : state.updated_windows) {
