@@ -23,6 +23,7 @@
 #include "anbox/platform/base_platform.h"
 #include "anbox/graphics/emugl/DisplayManager.h"
 #include "anbox/input/device.h"
+#include "anbox/platform/sdl/toast_window.h"
 
 #include <map>
 #include <thread>
@@ -92,6 +93,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   std::shared_ptr<Renderer> renderer_;
   std::shared_ptr<input::Manager> input_manager_;
   std::shared_ptr<wm::Manager> window_manager_;
+  std::weak_ptr<ToastWindow> toast_;
   // We don't own the windows anymore after the got created by us so we
   // need to be careful once we try to use them again.
   std::map<Window::Id, std::weak_ptr<Window>> windows_;
