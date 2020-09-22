@@ -139,7 +139,8 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
       BOOST_THROW_EXCEPTION(std::runtime_error("SDL subsystem not supported"));
   }
 
-  struct timeval now = (struct timeval) { 0 };
+  struct timeval now;
+  memset(&now, 0, sizeof(struct timeval));
   gettimeofday(&now, NULL);
   last_update_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
   lastClickTime = last_update_time;
@@ -246,6 +247,7 @@ bool Window::check_db_clicked(int x, int y) {
   int wnd_y = 0;
   SDL_GetWindowPosition(window_, &wnd_x, &wnd_y);
   struct timeval now;
+  memset(&now, 0, sizeof(struct timeval));
   gettimeofday(&now, NULL);
   long long current_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
   if (x == last_point_x && y == last_point_y && 
@@ -292,7 +294,8 @@ void Window::process_event(const SDL_Event &event) {
     // SDL_WINDOWEVENT_SIZE_CHANGED is always sent.
     case SDL_WINDOWEVENT_SIZE_CHANGED:
       if (observer_) {
-        struct timeval now = (struct timeval) { 0 };
+        struct timeval now;
+        memset(&now, 0, sizeof(struct timeval));
         gettimeofday(&now, NULL);
         last_resize_time_ = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
         resizing_ = true;
@@ -301,7 +304,8 @@ void Window::process_event(const SDL_Event &event) {
       break;
     case SDL_WINDOWEVENT_MOVED:
       if (observer_) {
-        struct timeval now = (struct timeval) { 0 };
+        struct timeval now;
+        memset(&now, 0, sizeof(struct timeval));
         gettimeofday(&now, NULL);
         last_resize_time_ = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
         resizing_ = true;
@@ -327,7 +331,8 @@ Window::Id Window::id() const { return id_; }
 std::uint32_t Window::window_id() const { return SDL_GetWindowID(window_); }
 
 bool Window::checkResizeable() {
-  struct timeval now = (struct timeval) { 0 };
+  struct timeval now;
+  memset(&now, 0, sizeof(struct timeval));
   gettimeofday(&now, NULL);
   long long time_now = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
   if (resizing_ && time_now - last_resize_time_ > RESIZE_TIMESPAN) {
@@ -380,7 +385,8 @@ void Window::update_state(const wm::WindowState::List &states) {
         y == rect.top()) {
       return;
     }
-    struct timeval now = (struct timeval) { 0 };
+    struct timeval now;
+    memset(&now, 0, sizeof(struct timeval));
     gettimeofday(&now, NULL);
     long long current_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
     if (current_time - last_update_time >= APP_START_MAX_TIME) {
