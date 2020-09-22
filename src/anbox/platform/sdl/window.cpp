@@ -164,7 +164,7 @@ void Window::destroy_window() {
 
 bool Window::title_event_filter(int x, int y) {
   const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
-  return !fullscreen_ && y <= top_drag_area_height;
+  return is_title_enable_ && !fullscreen_ && y <= top_drag_area_height;
 }
 
 SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data) {
@@ -348,6 +348,21 @@ void Window::setResizing(bool resizing) {
 }
 
 void Window::update_state(const wm::WindowState::List &states) {
+  bool is_title_enable = true;
+  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
+
+  for (int i = states.size() - 1; i >= 0; --i) {
+    auto ws = states[i];
+    // 0 means window_frame has no titlebar, set it disabled.
+    if (ws.flags() == 0 && (ws.frame().top() - frame().top() < top_drag_area_height)) {
+      is_title_enable = false;
+      break;
+    }
+    if (ws.flags() != 0) {
+      break;
+    }
+  }
+  is_title_enable_ = is_title_enable;
   for (auto ws : states)
   {
     if (!fullscreen_ && ws.videofullscreen()) {

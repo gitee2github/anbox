@@ -111,6 +111,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   int last_wnd_y{ 0 };
   std::uint32_t visible_property;
   bool fullscreen_ = false;
+  bool is_title_enable_ = true;
 };
 } // namespace sdl
 } // namespace platform

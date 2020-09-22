@@ -39,7 +39,7 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
         win_layers.insert({w, {renderable}});
       } else {
         ERROR("Toast! get toast window error");
-	continue;
+        continue;
       }
       bGetToast = true;
       continue;

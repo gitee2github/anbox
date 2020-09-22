@@ -35,7 +35,8 @@ class WindowState {
   WindowState();
   WindowState(const Display::Id &display, bool has_surface,
               const graphics::Rect &frame, const std::string &package_name,
-              const Task::Id &task, const Stack::Id &stack, const bool videofullscreen = false);
+              const Task::Id &task, const Stack::Id &stack, const bool videofullscreen = false,
+              const int32_t flags = -1);
   ~WindowState();
 
   Display::Id display() const { return display_; }
@@ -45,6 +46,7 @@ class WindowState {
   std::string package_name() const { return package_name_; }
   Task::Id task() const { return task_; }
   Stack::Id stack() const { return stack_; }
+  int32_t flags() const {return flags_;}
 
  private:
   Display::Id display_;
@@ -54,6 +56,7 @@ class WindowState {
   Task::Id task_;
   Stack::Id stack_;
   bool videofullscreen_;
+  int32_t flags_;
 };
 }  // namespace wm
 }  // namespace anbox
