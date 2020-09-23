@@ -41,7 +41,7 @@
 #define PCM_CARD 0
 #define PCM_DEVICE 0
 
-#define OUT_PERIOD_MS 15
+#define OUT_PERIOD_MS 25
 #define OUT_PERIOD_COUNT 4
 
 #define IN_PERIOD_MS 10
