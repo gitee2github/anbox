@@ -17,6 +17,7 @@
 <permissions>
     <feature name="android.software.freeform_window_management" />
     <feature name="android.hardware.ethernet" />
+    <feature name="android.hardware.camera" />
 
     <!-- Disallow device admin and profile owner on Anbox-->
     <unavailable-feature name="android.software.device_admin" />
