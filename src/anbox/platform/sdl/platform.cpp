@@ -723,6 +723,17 @@ bool Platform::restore_app(const std::string &package_name) {
   }
   return false;
 }
+
+bool Platform::is_focus_window_closing() {
+  for (auto &iter : windows_) {
+    if (auto w = iter.second.lock()) {
+      if (w->window_id() == focused_sdl_window_id_) {
+        return w->check_closing();
+      }
+    }
+  }
+  return false;
+}
 } // namespace sdl
 } // namespace platform
 } // namespace anbox

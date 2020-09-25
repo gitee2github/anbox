@@ -169,6 +169,10 @@ bool Window::title_event_filter(int x, int y) {
 
 SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data) {
   auto platform_window = reinterpret_cast<Window*>(data);
+  if (platform_window == nullptr) {
+    return SDL_HITTEST_NORMAL;
+  }
+  platform_window->set_closing(false);
 
   if (platform_window->get_fullscreen()) {
     return SDL_HITTEST_NORMAL;
@@ -199,6 +203,7 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
             ((platform_window->get_property() & HIDE_BACK) != HIDE_BACK)) {
       std::shared_ptr<anbox::platform::sdl::Window::Observer> observer = platform_window->observer_;
       if (observer ) {
+        platform_window->set_closing(true);
         observer->window_wants_focus(platform_window->id());
         observer->input_key_event(SDL_SCANCODE_AC_BACK, 1);
         observer->input_key_event(SDL_SCANCODE_AC_BACK, 0);
@@ -209,6 +214,7 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
     if ((platform_window->get_property() & HIDE_CLOSE) != HIDE_CLOSE) {
       if (pt->x > w - button_area_width * btn_cnt &&
               pt->x < w - button_area_width * (btn_cnt - 1)) {
+        platform_window->set_closing(true);
         platform_window->close();
         return SDL_HITTEST_NORMAL;
       }
@@ -423,6 +429,16 @@ void Window::restore_window() {
   auto flags = SDL_GetWindowFlags(window_);
   if (flags & SDL_WINDOW_MINIMIZED) {
     SDL_RestoreWindow(window_);
+  }
+}
+
+void Window::set_focus_from_android(bool just_set) {
+  if (observer_ && observer_->get_focus_window_id() != window_id()) {
+    if (just_set || observer_->is_focus_window_closing()) {
+      observer_->set_focus_window_id(window_id());
+    } else {
+      restore_window();
+    }
   }
 }
 

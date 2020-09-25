@@ -62,6 +62,9 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
     virtual void window_resized(const Id &id, const std::int32_t &x,
                                 const std::int32_t &y) = 0;
     virtual void input_key_event(const SDL_Scancode &scan_code, std::int32_t down_or_up) = 0;
+    virtual std::uint32_t get_focus_window_id() = 0;
+    virtual void set_focus_window_id(std::uint32_t new_id) = 0;
+    virtual bool is_focus_window_closing() = 0;
   };
 
   Window(const std::shared_ptr<Renderer> &renderer,
@@ -77,10 +80,13 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   bool check_min_state() {return SDL_GetWindowFlags(window_) & SDL_WINDOW_MINIMIZED;}
  
   void update_state(const wm::WindowState::List &states) override;
+  void set_focus_from_android(bool just_set) override;
 
   bool check_db_clicked(int x, int y);
   bool checkResizeable() override;
   void setResizing(bool resizing) override;
+  bool check_closing() { return is_closing_; }
+  void set_closing(bool closing) { is_closing_ = closing; };
 
   void restore_window();
   bool get_fullscreen() { return fullscreen_; }
@@ -112,6 +118,7 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   std::uint32_t visible_property;
   bool fullscreen_ = false;
   bool is_title_enable_ = true;
+  bool is_closing_ = false;
 };
 } // namespace sdl
 } // namespace platform

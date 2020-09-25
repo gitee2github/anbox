@@ -42,6 +42,9 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
 
   std::map<Task::Id, WindowState::List> task_updates;
 
+  bool neet_setfocus = false;
+  bool is_window_removed = false;
+  WindowState last_ws;
   for (const auto &window : updated) {
     // Ignore all windows which are not part of the freeform task stack
     if (window.stack() != Stack::Id::Freeform && window.stack() != Stack::Id::Fullscreen) continue;
@@ -49,6 +52,8 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
     // And also those which don't have a surface mapped at the moment
     if (!window.has_surface()) continue;
 
+    neet_setfocus = true;
+    last_ws = window;
     // If we know that task already we first collect all window updates
     // for it so we can apply all of them together.
     auto t = task_updates.find(window.task());
@@ -77,6 +82,7 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
       event.user.data1 = new(std::nothrow) platform::manager_window_param(window.task(), window.frame(), title);
       event.user.data2 = 0;
       SDL_PushEvent(&event);
+      neet_setfocus = false;
     }
   }
 
@@ -103,7 +109,14 @@ void MultiWindowManager::apply_window_state_update(const WindowState::List &upda
         event.user.data1 = new(std::nothrow) platform::manager_window_param(it->first, graphics::Rect(0, 0, 0, 0), "");
         event.user.data2 = 0;
         SDL_PushEvent(&event);
+        is_window_removed = true;
       }
+    }
+  }
+  if (neet_setfocus) {
+    auto w = find_window_for_task(last_ws.task());
+    if (w) {
+      w->set_focus_from_android(is_window_removed);
     }
   }
 }
