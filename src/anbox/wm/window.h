@@ -56,6 +56,7 @@ class Window {
   void update_last_frame(const graphics::Rect &frame);
 
   virtual bool title_event_filter(int x, int y);
+  virtual void set_focus_from_android(bool just_set) { (void)just_set; }
   void set_native_handle(const EGLNativeWindowType &handle);
   EGLNativeWindowType native_handle() const;
 

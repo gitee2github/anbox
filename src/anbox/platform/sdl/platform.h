@@ -61,6 +61,9 @@ class Platform : public std::enable_shared_from_this<Platform>,
                     const std::int32_t &y) override;
   void window_resized(const Window::Id &id, const std::int32_t &width,
                       const std::int32_t &height) override;
+  std::uint32_t get_focus_window_id() override { return focused_sdl_window_id_; }
+  void set_focus_window_id(std::uint32_t new_id) override { focused_sdl_window_id_ = new_id; }
+  bool is_focus_window_closing() override;
 
   void set_renderer(const std::shared_ptr<Renderer> &renderer) override;
   void set_window_manager(const std::shared_ptr<wm::Manager> &window_manager) override;
