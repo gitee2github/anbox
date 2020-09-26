@@ -164,28 +164,45 @@ std::string MultiWindowManager::get_title(const std::string &package_name) {
   }
 }
 
-std::shared_ptr<Window> MultiWindowManager::update_toast_window(const anbox::graphics::Rect &rect) {
-  auto stack = wm::Stack::Id::Freeform;
-  if (rect == graphics::Rect(0, 0, 0, 0)) {
-    stack = wm::Stack::Id::Default;
-  }
+std::shared_ptr<Window> MultiWindowManager::get_toast_window(const anbox::graphics::Rect &rect, int index) {
   auto update_window = wm::WindowState{
       wm::Display::Id{0},
       true,
       rect,
       "",
       wm::Task::Id{0},
-      stack,
+      wm::Stack::Id::Freeform,
   };
-  if (toast_window_) {
-    toast_window_->update_state({update_window});
+  auto tw = toast_windows_[index];
+  if (tw != nullptr) {
+    tw->update_state({update_window});
   }
-  return toast_window_;
+  return tw;
 }
 
-void MultiWindowManager::set_toast_window(std::shared_ptr<Window> tw) {
-  toast_window_ = tw;
+void MultiWindowManager::add_toast_window(std::shared_ptr<Window> tw) {
+  toast_windows_.push_back(tw);
 }
 
+void MultiWindowManager::hide_rest_toast_window(int index) {
+  if (index < 0) return;
+
+  auto update_window = wm::WindowState{
+      wm::Display::Id{0},
+      true,
+      anbox::graphics::Rect{0, 0, 0, 0},
+      "",
+      wm::Task::Id{0},
+      wm::Stack::Id::Default,
+  };
+
+  while (index < toast_windows_.size()) {
+    auto tw = toast_windows_[index];
+    if (tw != nullptr) {
+      tw->update_state({update_window});
+    }
+    ++index;
+  }
+}
 }  // namespace wm
 }  // namespace anbox

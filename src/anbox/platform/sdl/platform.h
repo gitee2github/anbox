@@ -96,12 +96,11 @@ class Platform : public std::enable_shared_from_this<Platform>,
   std::shared_ptr<Renderer> renderer_;
   std::shared_ptr<input::Manager> input_manager_;
   std::shared_ptr<wm::Manager> window_manager_;
-  std::weak_ptr<ToastWindow> toast_;
+  std::vector<std::weak_ptr<ToastWindow>> toasts_;
   // We don't own the windows anymore after the got created by us so we
   // need to be careful once we try to use them again.
   std::map<Window::Id, std::weak_ptr<Window>> windows_;
   std::map<wm::Task::Id, Window::Id> tasks_;
-  std::shared_ptr<Window> current_window_;
   std::thread event_thread_;
   std::thread ime_thread_;
   bool event_thread_running_;
@@ -116,6 +115,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
 
   static const int MAX_FINGERS = 10;
   static const int MAX_TRACKING_ID = 10;
+  static const int MAX_DEFAULT_TOAST_NUM = 10;
 
   int touch_slots[MAX_FINGERS];
   int last_slot = -1;

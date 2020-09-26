@@ -41,12 +41,13 @@ class Manager {
   virtual void remove_task(const Task::Id &task) = 0;
   virtual void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) = 0;
   virtual void erase_task(const Task::Id &task) = 0;
-  virtual std::shared_ptr<Window> update_toast_window(const anbox::graphics::Rect &rect) = 0;
+  virtual std::shared_ptr<Window> get_toast_window(const anbox::graphics::Rect &rect, int index) = 0;
+  virtual void hide_rest_toast_window(int index) = 0;
 
   virtual std::string get_title(const std::string &package_name) = 0;
   // FIXME only applies for the multi-window case
   virtual std::shared_ptr<Window> find_window_for_task(const Task::Id &task) = 0;
-  virtual void set_toast_window(std::shared_ptr<wm::Window> tw) = 0;
+  virtual void add_toast_window(std::shared_ptr<wm::Window> tw) = 0;
 };
 }  // namespace wm
 }  // namespace anbox

@@ -26,22 +26,20 @@ MultiWindowComposerStrategy::MultiWindowComposerStrategy(const std::shared_ptr<w
 
 std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrategy::process_layers(const RenderableList &renderables) {
   WindowRenderableList win_layers;
-  bool bGetToast = false;  // if don't have toast frame, tell wm to hide toast_window
+  std::vector<Rect> toast_frames;
+  int index = 0;
   for (const auto &renderable : renderables) {
     // Ignore all surfaces which are not meant for a task
-    if (renderable.name() == "Toast") {
-      if (bGetToast) {
-        WARNING("Toast! toast choosed");
-        continue;
-      }
-      auto w = wm_->update_toast_window(renderable.screen_position());
+    if (renderable.name() == "Toast" || utils::string_starts_with(renderable.name(), "Application Not Responding") ||
+               utils::string_starts_with(renderable.name(), "Application Error")) {
+      auto w = wm_->get_toast_window(renderable.screen_position(), index);
+      ++index;
       if (w) {
         win_layers.insert({w, {renderable}});
       } else {
-        ERROR("Toast! get toast window error");
+        ERROR("Toast! get toast window error!%s", renderable.name().c_str());
         continue;
       }
-      bGetToast = true;
       continue;
     }
     if (!utils::string_starts_with(renderable.name(), "org.anbox.surface.")) {
@@ -61,9 +59,7 @@ std::map<std::shared_ptr<wm::Window>, RenderableList> MultiWindowComposerStrateg
 
     win_layers[w].push_back(renderable);
   }
-  if (!bGetToast) { // hide toast window
-    wm_->update_toast_window(Rect(0, 0, 0, 0));
-  }
+  wm_->hide_rest_toast_window(index);
 
   for (auto &w : win_layers) {
     const auto &renderables = w.second;
