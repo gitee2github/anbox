@@ -181,13 +181,8 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
   int w = 0, h = 0;
   SDL_GetWindowSize(window, &w, &h);
 
-  const auto border_size = graphics::dp_to_pixel(window_resize_border);
-  // top and bottom, two margins
-  const auto top_drag_area_height = graphics::dp_to_pixel(button_size + (button_margin << 1));
   // left and right, two margins
   const auto button_area_width = graphics::dp_to_pixel(button_size + (button_margin << 1));
-
-  SDL_HitTestResult result = SDL_HITTEST_NORMAL;
 
   if (!platform_window->initialized.load()) {
     INFO("window initialized by resize");

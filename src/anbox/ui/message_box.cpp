@@ -45,7 +45,6 @@ MessageBox::MessageBox(){
     BOOST_THROW_EXCEPTION(std::runtime_error(message));
   }
 
-  auto renderer = SDL_CreateRenderer(window_, -1, 0);
   auto surface = SDL_GetWindowSurface(window_);
   if (!surface)
     BOOST_THROW_EXCEPTION(std::runtime_error("Could not retrieve surface for our window"));
