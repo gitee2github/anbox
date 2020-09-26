@@ -135,7 +135,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
 
     ColorBuffer* cb = new(std::nothrow) ColorBuffer(p_display, helper, hndl);
     if (!cb) {
-        ERROR("New color buffer failed, errno:%s", std::strerror(errno));
+        ERROR("New color buffer failed, errno:%s", strerror(errno));
         return NULL;
     }
 
