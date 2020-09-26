@@ -118,7 +118,7 @@ void rgb888_to_yv12(char *dest, char *src, int width, int height, int left, int 
     int rgb_stride = 3;
 
     if ((!dest) || (!src)) {
-        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        ALOGE("%s param is invailed, dest:%p src:%p", __func__, dest, src);
         return;
     }
 
@@ -158,7 +158,7 @@ void rgb888_to_yuv420p(char *dest, char *src, int width, int height, int left, i
     int rgb_stride = 3;
 
     if ((!dest) || (!src)) {
-        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        ALOGE("%s param is invailed, dest:%p src:%p", __func__, dest, src);
         return;
     }
 
@@ -200,7 +200,7 @@ void yv12_to_rgb565(char *dest, char *src, int width, int height, int left, int 
     int cSize = cStride * height / 2;
 
     if ((!dest) || (!src)) {
-        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        ALOGE("%s param is invailed, dest:%p src:%p", __func__, dest, src);
         return;
     }
 
@@ -250,7 +250,7 @@ void yv12_to_rgb888(char *dest, char *src, int width, int height, int left, int 
     int rgb_stride = 3;
 
     if ((!dest) || (!src)) {
-        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        ALOGE("%s param is invailed, dest:%p src:%p", __func__, dest, src);
         return;
     }
 
@@ -299,7 +299,7 @@ void yuv420p_to_rgb888(char *dest, char *src, int width, int height, int left, i
     int rgb_stride = 3;
 
     if ((!dest) || (!src)) {
-        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        ALOGE("%s param is invailed, dest:%p src:%p", __func__, dest, src);
         return;
     }
 
