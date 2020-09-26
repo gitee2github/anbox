@@ -81,6 +81,7 @@ int NullPlatform::get_user_window_event() const {
 
 bool NullPlatform::restore_app(const std::string &package_name) {
   (void)package_name;
+  return false;
 }
 
 std::string NullPlatform::ime_socket_file() const {
