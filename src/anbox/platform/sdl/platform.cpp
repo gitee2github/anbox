@@ -161,14 +161,17 @@ void Platform::create_toast_window() {
    * Run create_toast_window after set_renderer and set_window_manager, if not toast_window 
    * will have no use.
    */
-  auto w = std::make_shared<ToastWindow>(renderer_, anbox::graphics::Rect(0, 0, 0, 0));
-  if (window_manager_) {
-    window_manager_->set_toast_window(w);
-  } else {
-    WARNING("toast window set failed!!!");
-  }
-  if (w) {
-    toast_ = w;
+  std::uint32_t index = 0;
+  while (index < MAX_DEFAULT_TOAST_NUM) {
+    auto w = std::make_shared<ToastWindow>(renderer_, anbox::graphics::Rect(0, 0, 0, 0));
+
+    if (window_manager_ != nullptr && w != nullptr) {
+      toasts_.push_back(w);
+      window_manager_->add_toast_window(w);
+    } else {
+      WARNING("toast window set failed!!!");
+    }
+    ++index;
   }
 }
 
@@ -352,9 +355,14 @@ void Platform::process_input_event(const SDL_Event &event) {
           }
         }
       }
-      if (auto toast = toast_.lock()) {
-        if (toast->window_id() == event.window.windowID) {
-          bFind = true;
+      if(!bFind) {
+        for (auto &it : toasts_) {
+          if (auto toast = it.lock()) {
+            if (toast->window_id() == event.window.windowID) {
+              bFind = true;
+              break;
+            }
+          }
         }
       }
       if (!bFind) {

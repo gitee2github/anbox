@@ -90,13 +90,18 @@ std::string SingleWindowManager::get_title(const std::string &package_name) {
   return "";
 }
 
-std::shared_ptr<Window> SingleWindowManager::update_toast_window(const anbox::graphics::Rect &rect) {
+std::shared_ptr<Window> SingleWindowManager::get_toast_window(const anbox::graphics::Rect &rect, int index) {
   (void)rect;
+  (void)index;
   return nullptr;
 }
 
-void SingleWindowManager::set_toast_window(std::shared_ptr<Window> tw) {
+void SingleWindowManager::add_toast_window(std::shared_ptr<Window> tw) {
   (void)tw;
+}
+
+void SingleWindowManager::hide_rest_toast_window(int index) {
+  (void)index;
 }
 
 }  // namespace wm

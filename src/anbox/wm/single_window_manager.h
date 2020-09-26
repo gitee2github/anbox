@@ -53,8 +53,9 @@ class SingleWindowManager : public Manager {
   void insert_task(const Task::Id &task, std::shared_ptr<wm::Window> pt) override;
   void erase_task(const Task::Id &task) override;
   std::string get_title(const std::string &package_name) override;
-  std::shared_ptr<Window> update_toast_window(const anbox::graphics::Rect &rect) override;
-  void set_toast_window(std::shared_ptr<Window> tw) override;
+  std::shared_ptr<Window> get_toast_window(const anbox::graphics::Rect &rect, int index) override;
+  void add_toast_window(std::shared_ptr<Window> tw) override;
+  void hide_rest_toast_window(int index) override;
 
  private:
   std::weak_ptr<platform::BasePlatform> platform_;
