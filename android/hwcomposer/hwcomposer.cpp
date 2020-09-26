@@ -194,7 +194,23 @@ static int hwc_set(hwc_composer_device_1_t* dev, size_t numDisplays,
             return -EINVAL;
         }
 
-        rcEnc->rcPostLayer(rcEnc,
+        std::string str_anr_crash_dialog(layer->name);
+        if ((str_anr_crash_dialog.find("Application Not Responding") != -1) ||
+                (str_anr_crash_dialog.find("Application Error") != -1)) {
+            rcEnc->rcPostLayer(rcEnc,
+                           layer->name,
+                           cb->hostHandle,
+                           layer->planeAlpha / 255,
+                           layer->sourceCrop.left + 48,
+                           layer->sourceCrop.top + 48,
+                           layer->sourceCrop.right - 48,
+                           layer->sourceCrop.bottom - 48,
+                           layer->displayFrame.left + 48,
+                           layer->displayFrame.top + 48,
+                           layer->displayFrame.right - 48,
+                           layer->displayFrame.bottom - 48);
+        } else {
+            rcEnc->rcPostLayer(rcEnc,
                            layer->name,
                            cb->hostHandle,
                            layer->planeAlpha / 255,
@@ -206,6 +222,7 @@ static int hwc_set(hwc_composer_device_1_t* dev, size_t numDisplays,
                            layer->displayFrame.top,
                            layer->displayFrame.right,
                            layer->displayFrame.bottom);
+        }
         hostCon->flush();
     }
 
