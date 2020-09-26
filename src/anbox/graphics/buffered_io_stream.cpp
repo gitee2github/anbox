@@ -57,8 +57,13 @@ size_t BufferedIOStream::commitBuffer(size_t size) {
 
 const unsigned char *BufferedIOStream::read(void *buf, size_t *inout_len) {
   std::unique_lock<std::mutex> l(lock_);
-  size_t wanted = *inout_len;
   size_t count = 0U;
+
+  if ((buf == nullptr) || (inout_len == nullptr)) {
+    ERROR("param is invailed, buf:%p inout_len:%p", buf, inout_len);
+    return nullptr;
+  }
+  size_t wanted = *inout_len;
   auto dst = static_cast<uint8_t *>(buf);
   while (count < wanted) {
     if (read_buffer_left_ > 0) {

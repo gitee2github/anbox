@@ -71,6 +71,11 @@ void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int 
     int yOffset = 0;
     int cSize = cStride * height / 2;
 
+    if ((!dest) || (!src)) {
+        ALOGE("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        return;
+    }
+
     uint16_t *rgb_ptr0 = (uint16_t *) src;
     uint8_t *yv12_y0 = (uint8_t *) dest;
     uint8_t *yv12_v0 = yv12_y0 + yStride * height;
@@ -112,6 +117,11 @@ void rgb888_to_yv12(char *dest, char *src, int width, int height, int left, int 
     int cSize = cStride * height / 2;
     int rgb_stride = 3;
 
+    if ((!dest) || (!src)) {
+        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        return;
+    }
+
     uint8_t *rgb_ptr0 = (uint8_t *) src;
     uint8_t *yv12_y0 = (uint8_t *) dest;
     uint8_t *yv12_v0 = yv12_y0 + yStride * height;
@@ -146,6 +156,11 @@ void rgb888_to_yuv420p(char *dest, char *src, int width, int height, int left, i
     int yOffset = 0;
     int cSize = cStride * height / 2;
     int rgb_stride = 3;
+
+    if ((!dest) || (!src)) {
+        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        return;
+    }
 
     uint8_t *rgb_ptr0 = (uint8_t *) src;
     uint8_t *yv12_y0 = (uint8_t *) dest;
@@ -183,6 +198,11 @@ void yv12_to_rgb565(char *dest, char *src, int width, int height, int left, int 
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
+
+    if ((!dest) || (!src)) {
+        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        return;
+    }
 
     uint16_t *rgb_ptr0 = (uint16_t *) dest;
     uint8_t *yv12_y0 = (uint8_t *) src;
@@ -229,6 +249,11 @@ void yv12_to_rgb888(char *dest, char *src, int width, int height, int left, int 
     int cSize = cStride * height / 2;
     int rgb_stride = 3;
 
+    if ((!dest) || (!src)) {
+        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        return;
+    }
+
     uint8_t *rgb_ptr0 = (uint8_t *) dest;
     uint8_t *yv12_y0 = (uint8_t *) src;
     uint8_t *yv12_v0 = yv12_y0 + yStride * height;
@@ -273,6 +298,11 @@ void yuv420p_to_rgb888(char *dest, char *src, int width, int height, int left, i
     int cSize = cStride * height / 2;
     int rgb_stride = 3;
 
+    if ((!dest) || (!src)) {
+        DD("%s param is invailed, dest:%p src:%p", __func__, dest, src);
+        return;
+    }
+
     uint8_t *rgb_ptr0 = (uint8_t *) dest;
     uint8_t *yv12_y0 = (uint8_t *) src;
     uint8_t *yv12_u0 = yv12_y0 + yStride * height;
@@ -307,9 +337,14 @@ void yuv420p_to_rgb888(char *dest, char *src, int width, int height, int left, i
     }
 }
 
-void
-copy_rgb_buffer_from_unlocked(char *_dst, char *raw_data, int unlockedWidth, int width, int height, int top, int left,
-                              int bpp) {
+void copy_rgb_buffer_from_unlocked(char *_dst, char *raw_data,
+    int unlockedWidth, int width, int height, int top, int left, int bpp) {
+
+    if ((!_dst) || (!raw_data)) {
+        DD("%s param is invailed, dest:%p src:%p", __func__, _dst, raw_data);
+        return;
+    }
+    
     char *dst = _dst;
     int dst_line_len = width * bpp;
     int src_line_len = unlockedWidth * bpp;

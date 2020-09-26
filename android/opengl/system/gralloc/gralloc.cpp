@@ -86,6 +86,11 @@ struct fb_device_t {
 
 static int map_buffer(cb_handle_t *cb, void **vaddr)
 {
+
+    if ((!cb) || (!vaddr)) {
+        return -EINVA;
+    }
+
     if (cb->fd < 0 || cb->ashmemSize <= 0) {
         return -EINVAL;
     }
@@ -341,15 +346,17 @@ static int gralloc_alloc(alloc_device_t* dev,
     // alloc succeeded - insert the allocated handle to the allocated list
     //
     AllocListNode *node = new AllocListNode();
-    pthread_mutex_lock(&grdev->lock);
-    node->handle = cb;
-    node->next =  grdev->allocListHead;
-    node->prev =  NULL;
-    if (grdev->allocListHead) {
-        grdev->allocListHead->prev = node;
+    if (node) {
+        pthread_mutex_lock(&grdev->lock);
+        node->handle = cb;
+        node->next =  grdev->allocListHead;
+        node->prev =  NULL;
+        if (grdev->allocListHead) {
+            grdev->allocListHead->prev = node;
+        }
+        grdev->allocListHead = node;
+        pthread_mutex_unlock(&grdev->lock);
     }
-    grdev->allocListHead = node;
-    pthread_mutex_unlock(&grdev->lock);
 
     *pHandle = cb;
     if (frameworkFormat == HAL_PIXEL_FORMAT_YCbCr_420_888) {
@@ -734,6 +741,11 @@ static void updateHostColorBuffer(cb_handle_t* cb,
                               bool doLocked,
                               char* pixels) {
     D("%s: call. doLocked=%d", __FUNCTION__, doLocked);
+
+    if ((!cb) || (!pixels)) {
+        return;
+    }
+    
     DEFINE_HOST_CONNECTION;
     int bpp = glUtilsPixelBitSize(cb->glFormat, cb->glType) >> 3;
     int left = doLocked ? cb->lockedLeft : 0;
