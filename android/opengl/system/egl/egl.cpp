@@ -147,11 +147,11 @@ EGLContext_t::EGLContext_t(EGLDisplay dpy, EGLConfig config, EGLContext_t* share
 {
     flags = 0;
     version = 1;
-    clientState = new GLClientState();
+    clientState = new(std::nothrow) GLClientState();
     if (shareCtx)
         sharedGroup = shareCtx->getSharedGroup();
     else
-        sharedGroup = GLSharedGroupPtr(new GLSharedGroup());
+        sharedGroup = GLSharedGroupPtr(new(std::nothrow) GLSharedGroup());
 };
 
 EGLContext_t::~EGLContext_t()
@@ -375,6 +375,11 @@ EGLBoolean egl_pbuffer_surface_t::init(GLenum pixelFormat)
 {
     DEFINE_AND_VALIDATE_HOST_CONNECTION(EGL_FALSE);
 
+    if (!rcEnc) {
+        ALOGE("rcEnc is null");
+        return EGL_FALSE;
+    }
+
     rcSurface = rcEnc->rcCreateWindowSurface(rcEnc, (uintptr_t)config,
             getWidth(), getHeight());
     if (!rcSurface) {
@@ -456,9 +461,16 @@ static const char *getGLString(int glEnum)
     //
     DEFINE_AND_VALIDATE_HOST_CONNECTION(NULL);
     char *hostStr = NULL;
+    if (!rcEnc) {
+        ALOGE("rcEnc is null");
+        return NULL;
+    }
     int n = rcEnc->rcGetGLString(rcEnc, glEnum, NULL, 0);
     if (n < 0) {
         hostStr = new char[-n+1];
+        if (!hostStr) {
+            return NULL;
+        }
         n = rcEnc->rcGetGLString(rcEnc, glEnum, hostStr, -n);
         if (n <= 0) {
             delete [] hostStr;
@@ -527,6 +539,12 @@ EGLint eglGetError()
 
 __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *procname)
 {
+
+    if (!procname) {
+        ALOGE("procname is null");
+        return NULL;
+    }
+
     // search in EGL function table
     for (int i=0; i<egl_num_funcs; i++) {
         if (!strcmp(egl_funcs_by_name[i].name, procname)) {
@@ -586,6 +604,10 @@ EGLBoolean eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig 
 
     uint32_t* tempConfigs[config_size];
     DEFINE_AND_VALIDATE_HOST_CONNECTION(EGL_FALSE);
+    if (!rcEnc) {
+        ALOGE("rcEnc is null");
+        return EGL_FALSE;
+    }
     *num_config = rcEnc->rcChooseConfig(rcEnc, (EGLint*)attrib_list, attribs_size * sizeof(EGLint), (uint32_t*)tempConfigs, config_size);
     if (configs!=NULL) {
         EGLint i=0;
@@ -729,6 +751,10 @@ EGLBoolean eglDestroySurface(EGLDisplay dpy, EGLSurface eglSurface)
 
 EGLBoolean eglQuerySurface(EGLDisplay dpy, EGLSurface eglSurface, EGLint attribute, EGLint *value)
 {
+    if (!value) {
+        ALOGE("value is null");
+        return EGL_FALSE;
+    }
     VALIDATE_DISPLAY_INIT(dpy, EGL_FALSE);
     VALIDATE_SURFACE_RETURN(eglSurface, EGL_FALSE);
 
@@ -1189,7 +1215,7 @@ EGLBoolean eglCopyBuffers(EGLDisplay dpy, EGLSurface surface, EGLNativePixmapTyp
 
 EGLBoolean eglLockSurfaceKHR(EGLDisplay display, EGLSurface surface, const EGLint *attrib_list)
 {
-    //TODO later
+    //TODO :later
     (void)display;
     (void)surface;
     (void)attrib_list;
@@ -1198,7 +1224,7 @@ EGLBoolean eglLockSurfaceKHR(EGLDisplay display, EGLSurface surface, const EGLin
 
 EGLBoolean eglUnlockSurfaceKHR(EGLDisplay display, EGLSurface surface)
 {
-    //TODO later
+    //TODO :later
     (void)display;
     (void)surface;
     return 0;
@@ -1217,6 +1243,11 @@ EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target, EG
 
         android_native_buffer_t* native_buffer = (android_native_buffer_t*)buffer;
 
+        if (!native_buffer) {
+            ALOGE("native_buffer is null");
+            setErrorReturn(EGL_BAD_PARAMETER, EGL_NO_IMAGE_KHR);
+        }
+
         if (native_buffer->common.magic != ANDROID_NATIVE_BUFFER_MAGIC)
             setErrorReturn(EGL_BAD_PARAMETER, EGL_NO_IMAGE_KHR);
 
@@ -1224,6 +1255,9 @@ EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target, EG
             setErrorReturn(EGL_BAD_PARAMETER, EGL_NO_IMAGE_KHR);
 
         cb_handle_t *cb = (cb_handle_t *)(native_buffer->handle);
+        if (!cb) {
+            setErrorReturn(EGL_BAD_PARAMETER, EGL_NO_IMAGE_KHR);
+        }
 
         switch (cb->format) {
             case HAL_PIXEL_FORMAT_RGBA_8888:
@@ -1240,9 +1274,11 @@ EGLImageKHR eglCreateImageKHR(EGLDisplay dpy, EGLContext ctx, EGLenum target, EG
         native_buffer->common.incRef(&native_buffer->common);
 
         EGLImage_t *image = new EGLImage_t();
-        image->dpy = dpy;
-        image->target = target;
-        image->native_buffer = native_buffer;
+        if (image) {
+            image->dpy = dpy;
+            image->target = target;
+            image->native_buffer = native_buffer;
+        }
 
         return (EGLImageKHR)image;
     }
@@ -1360,7 +1396,7 @@ EGLBoolean eglGetSyncAttribKHR(EGLDisplay dpy, EGLSyncKHR sync,
 {
     (void)dpy;
 
-    if (sync != FENCE_SYNC_HANDLE) {
+    if ((sync != FENCE_SYNC_HANDLE) || (!value)) {
         setErrorReturn(EGL_BAD_PARAMETER, EGL_FALSE);
     }
 

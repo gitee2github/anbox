@@ -34,8 +34,6 @@ namespace fs = boost::filesystem;
 
 namespace {
 void logger_write(const emugl::LogLevel &level, const char *format, ...) {
-  (void)level;
-
   char message[2048];
   va_list args;
 

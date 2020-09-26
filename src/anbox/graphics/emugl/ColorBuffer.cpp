@@ -77,8 +77,9 @@ void unbindFbo() { s_gles2.glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 class ScopedHelperContext {
 public:
     ScopedHelperContext(ColorBuffer::Helper* helper) : mHelper(helper) {
-        if (!helper->setupContext()) {
-        mHelper = NULL;
+        if ((!helper) || (!helper->setupContext())) {
+            ERROR("Param is invailed, helper:%p", helper);
+            mHelper = NULL;
         }
     }
 
@@ -105,6 +106,11 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
                                  bool has_eglimage_texture_2d, Helper* helper, HandleType hndl) {
     GLenum texInternalFormat = 0;
 
+    if ((p_width == 0) || (p_height == 0)) {
+        ERROR("Param is invailed, p_width:%d p_height:%d", p_width, p_height);
+        return NULL;
+    }
+
     switch (p_internalFormat) {
         case GL_RGB:
         case GL_RGB565_OES:
@@ -127,8 +133,9 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
         return NULL;
     }
 
-    ColorBuffer* cb = new ColorBuffer(p_display, helper, hndl);
+    ColorBuffer* cb = new(std::nothrow) ColorBuffer(p_display, helper, hndl);
     if (!cb) {
+        ERROR("New color buffer failed, errno:%s", strerror(errno));
         return NULL;
     }
 
@@ -138,6 +145,10 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
     int nComp = (texInternalFormat == GL_RGB ? 3 : 4);
 
     char* zBuff = static_cast<char*>(::calloc(nComp * p_width * p_height, 1));
+    if (!zBuff) {
+        ERROR("calloc failed, errno:%s", strerror(errno));
+        return NULL;
+    }
     s_gles2.glTexImage2D(GL_TEXTURE_2D, 0, texInternalFormat, p_width, p_height,
                         0, texInternalFormat, GL_UNSIGNED_BYTE, zBuff);
     ::free(zBuff);
@@ -174,7 +185,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
             reinterpret_cast<EGLClientBuffer>(SafePointerFromUInt(cb->m_blitTex)), NULL);
     }
 
-    cb->m_resizer = new TextureResize(p_width, p_height);
+    cb->m_resizer = new(std::nothrow) TextureResize(p_width, p_height);
     if (!(cb->m_resizer)) {
         return NULL;
     }
