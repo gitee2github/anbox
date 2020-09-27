@@ -31,10 +31,16 @@ namespace platform {
 namespace sdl {
 AudioSink::AudioSink() :
   device_id_(0),
-  queue_(max_queue_size) {
+  queue_(max_queue_size),
+  mThreadExit(false),
+  t(NULL){
 }
 
 AudioSink::~AudioSink() {
+  mThreadExit = true;
+  if(t != NULL){
+    free(t);
+  }
   queue_.close_locked();
   disconnect_audio();
 }
@@ -43,18 +49,24 @@ void AudioSink::on_data_requested(void *user_data, std::uint8_t *buffer, int siz
   auto thiz = static_cast<AudioSink*>(user_data);
   thiz->read_data(buffer, size);
 }
-
+void AudioSink::monitor_loop()
+{
+    while(!mThreadExit){
+      if(device_id_ > 0 && SDL_GetAudioDeviceStatus(device_id_) == SDL_AUDIO_STOPPED) {
+        //restart audio if stopped internal cause of alsa errors
+        ERROR("closing sdl audio device cause of error device_id_ %d", device_id_);
+        SDL_LockAudioDevice(device_id_);
+        SDL_CloseAudioDevice(device_id_);
+        SDL_UnlockAudioDevice(device_id_);
+        ERROR("closed sdl audio device cause of error device_id_ %d", device_id_);
+        device_id_ = 0;
+      }
+      usleep(1*1000*1000);
+    }
+}
 bool AudioSink::connect_audio() {
   if (device_id_ > 0) {
-    //restart audio if stopped internal cause of alsa errors
-    if(SDL_GetAudioDeviceStatus(device_id_) == SDL_AUDIO_STOPPED) {
-      ERROR("closing sdl audio device cause of error");
-      SDL_CloseAudioDevice(device_id_);
-      ERROR("closed sdl audio device cause of error");
-      device_id_ = 0;
-    }else{
-      return true;
-    }
+    return true;
   }
 
   SDL_memset(&spec_, 0, sizeof(spec_));
@@ -71,6 +83,12 @@ bool AudioSink::connect_audio() {
 
   SDL_PauseAudioDevice(device_id_, 0);
 
+  if(t == NULL){
+    t = new std::thread([this](){
+      this->monitor_loop();
+    });
+    t->detach();
+  }
   return true;
 }
 
