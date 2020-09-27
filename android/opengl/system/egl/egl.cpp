@@ -861,7 +861,6 @@ EGLBoolean eglSurfaceAttrib(EGLDisplay dpy, EGLSurface surface, EGLint attribute
     case EGL_MULTISAMPLE_RESOLVE:
     case EGL_SWAP_BEHAVIOR:
         return true;
-        break;
     default:
         ALOGW("%s: attr=0x%x not implemented", __FUNCTION__, attribute);
     }
@@ -1156,7 +1155,6 @@ EGLBoolean eglQueryContext(EGLDisplay dpy, EGLContext ctx, EGLint attribute, EGL
         default:
             ALOGE("eglQueryContext %x  EGL_BAD_ATTRIBUTE", attribute);
             setErrorReturn(EGL_BAD_ATTRIBUTE, EGL_FALSE);
-            break;
     }
 
     return ret;
