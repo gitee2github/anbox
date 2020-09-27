@@ -114,18 +114,16 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
     switch (p_internalFormat) {
         case GL_RGB:
         case GL_RGB565_OES:
-        texInternalFormat = GL_RGB;
-        break;
-
+            texInternalFormat = GL_RGB;
+            break;
         case GL_RGBA:
         case GL_RGB5_A1_OES:
         case GL_RGBA4_OES:
-        texInternalFormat = GL_RGBA;
-        break;
+            texInternalFormat = GL_RGBA;
+            break;
 
         default:
-        return NULL;
-        break;
+            return NULL;
     }
 
     ScopedHelperContext context(helper);
@@ -147,6 +145,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
     char* zBuff = static_cast<char*>(::calloc(nComp * p_width * p_height, 1));
     if (!zBuff) {
         ERROR("calloc failed, errno:%s", strerror(errno));
+        delete cb;
         return NULL;
     }
     s_gles2.glTexImage2D(GL_TEXTURE_2D, 0, texInternalFormat, p_width, p_height,
@@ -187,6 +186,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
 
     cb->m_resizer = new(std::nothrow) TextureResize(p_width, p_height);
     if (!(cb->m_resizer)) {
+        delete cb;
         return NULL;
     }
 
@@ -307,6 +307,7 @@ bool ColorBuffer::blitFromCurrentReadBuffer() {
 
     // render m_blitTex
     if (!m_helper->getTextureDraw()) {
+        unbindFbo();
         return false;
     }
     m_helper->getTextureDraw()->draw(m_blitTex);
