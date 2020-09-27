@@ -88,7 +88,7 @@ static int map_buffer(cb_handle_t *cb, void **vaddr)
 {
 
     if ((!cb) || (!vaddr)) {
-        return -EINVA;
+        return -EINVAL;
     }
 
     if (cb->fd < 0 || cb->ashmemSize <= 0) {
