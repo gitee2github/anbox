@@ -38,6 +38,7 @@ class AudioSink : public audio::Sink {
   bool connect_audio();
   void disconnect_audio();
   void read_data(std::uint8_t *buffer, int size);
+  void monitor_loop();
 
   static void on_data_requested(void *user_data, std::uint8_t *buffer, int size);
 
@@ -47,6 +48,8 @@ class AudioSink : public audio::Sink {
   graphics::BufferQueue queue_;
   graphics::Buffer read_buffer_;
   size_t read_buffer_left_ = 0;
+  bool mThreadExit;
+  std::thread *t;
 };
 } // namespace sdl
 } // namespace platform
