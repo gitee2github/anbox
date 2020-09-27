@@ -45,8 +45,17 @@ void AudioSink::on_data_requested(void *user_data, std::uint8_t *buffer, int siz
 }
 
 bool AudioSink::connect_audio() {
-  if (device_id_ > 0)
-    return true;
+  if (device_id_ > 0) {
+    //restart audio if stopped internal cause of alsa errors
+    if(SDL_GetAudioDeviceStatus(device_id_) == SDL_AUDIO_STOPPED) {
+      ERROR("closing sdl audio device cause of error");
+      SDL_CloseAudioDevice(device_id_);
+      ERROR("closed sdl audio device cause of error");
+      device_id_ = 0;
+    }else{
+      return true;
+    }
+  }
 
   SDL_memset(&spec_, 0, sizeof(spec_));
   spec_.freq = 44100;
