@@ -194,13 +194,15 @@ void Platform::create_ime_socket() {
     return;
   }
   socket_addr.sun_family = AF_UNIX;
-  if (ime_socket_file_.length() >= strlen(socket_addr.sun_path) - 1) {
+  if (ime_socket_file_.length() >= sizeof(socket_addr.sun_path) - 1) {
     ERROR("Create ime failed, socket path too long");
     close(ime_socket);
     return;
   }
   strcpy(socket_addr.sun_path, ime_socket_file_.c_str());
-  unlink(ime_socket_file_.c_str());
+  if (unlink(ime_socket_file_.c_str()) < 0) {
+    WARNING("unlink failed!");
+  }
   rc = bind(ime_socket, reinterpret_cast<struct sockaddr *>(&socket_addr), sizeof(socket_addr));
   if (rc == -1) {
     ERROR("bind ime socket failed");
@@ -285,44 +287,41 @@ bool Platform::text_input_fliter(const char* text) {
 }
 
 void Platform::user_event_function(const SDL_Event &event) {
-  if (event.type == user_window_event) {
-    int event_type = event.user.code;
-    manager_window_param* param = (manager_window_param*) event.user.data1;
-    if (param) {
-      if (event_type == USER_CREATE_WINDOW) {
-        if (tasks_.find(param->taskId) != tasks_.end()) {
-          delete param;
-	  param = nullptr;
-          return;
-        }
-        auto w = create_window(param->taskId, param->rect, param->title);
-        if (w) {
-          w->attach();
-          window_manager_->insert_task(param->taskId, w);
-        } else {
-          WARNING("create window failed! remove task on android!");
-          window_manager_->remove_task(param->taskId);
-        }
-      } else if (event_type == USER_DESTROY_WINDOW) {
-        {
-          auto w = window_manager_->find_window_for_task(param->taskId);
-          if (w) {
-            w->destroy_window();
-          }
-        }
-        window_manager_->erase_task(param->taskId);
-        auto it = tasks_.find(param->taskId);
-        if (it != tasks_.end()) {
-          windows_.erase(it->second);
-          tasks_.erase(it);
-        }
-      }
+  manager_window_param* param = (manager_window_param*) event.user.data1;
+
+  if (event.type != user_window_event || param == nullptr) {
+    ERROR("error user event!! type=%d, param=%p", event.type, param);
+    return;
+  }
+  if (event.user.code == USER_CREATE_WINDOW) {
+    if (tasks_.find(param->taskId) != tasks_.end()) {
       delete param;
       param = nullptr;
+      return;
+    }
+    auto w = create_window(param->taskId, param->rect, param->title);
+    if (w) {
+      w->attach();
+      window_manager_->insert_task(param->taskId, w);
     } else {
-      ERROR("null point param!!");
+      WARNING("create window failed! remove task on android!");
+      window_manager_->remove_task(param->taskId);
+    }
+  } else if (event.user.code == USER_DESTROY_WINDOW) {
+    auto w = window_manager_->find_window_for_task(param->taskId);
+    if (w) {
+      w->destroy_window();
+    }
+
+    window_manager_->erase_task(param->taskId);
+    auto it = tasks_.find(param->taskId);
+    if (it != tasks_.end()) {
+      windows_.erase(it->second);
+      tasks_.erase(it);
     }
   }
+  delete param;
+  param = nullptr;
 }
 
 void Platform::input_key_event(const SDL_Scancode &scan_code, std::int32_t down_or_up) {  // down_or_up: 1-down,0-up
@@ -330,6 +329,28 @@ void Platform::input_key_event(const SDL_Scancode &scan_code, std::int32_t down_
   std::uint16_t code = KeycodeConverter::convert(scan_code);
   keyboard_events.push_back({EV_KEY, code, down_or_up});
   keyboard_->send_events(keyboard_events);
+}
+
+// check for mouse button down event effective or not
+bool Platform::mbd_event_fliter(const SDL_Event &event) {
+  for (auto &iter : windows_) {
+    if (auto w = iter.second.lock()) {
+      if (w->window_id() == event.window.windowID) {
+        if (w->title_event_filter(event.button.x, event.button.y)) {
+          return false;
+        }
+        return true;
+      }
+    }
+  }
+  for (auto &it : toasts_) {
+    if (auto toast = it.lock()) {
+      if (toast->window_id() == event.window.windowID) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 void Platform::process_input_event(const SDL_Event &event) {
@@ -344,28 +365,7 @@ void Platform::process_input_event(const SDL_Event &event) {
   switch (event.type) {
     // Mouse
     case SDL_MOUSEBUTTONDOWN:
-      for (auto &iter : windows_) {
-        if (auto w = iter.second.lock()) {
-          if (w->window_id() == event.window.windowID) {
-            if (w->title_event_filter(event.button.x, event.button.y)) {
-              return;
-            }
-            bFind = true;
-            break;
-          }
-        }
-      }
-      if(!bFind) {
-        for (auto &it : toasts_) {
-          if (auto toast = it.lock()) {
-            if (toast->window_id() == event.window.windowID) {
-              bFind = true;
-              break;
-            }
-          }
-        }
-      }
-      if (!bFind) {
+      if (!mbd_event_fliter(event)) {
         return;
       }
       if (config_.no_touch_emulation) {
@@ -373,9 +373,9 @@ void Platform::process_input_event(const SDL_Event &event) {
       } else {
         x = event.button.x;
         y = event.button.y;
-        if (!adjust_coordinates(SDL_GetWindowFromID(event.window.windowID), x, y))
-          break;
-        push_finger_down(x, y, emulated_touch_id_, touch_events);
+        if (adjust_coordinates(SDL_GetWindowFromID(event.window.windowID), x, y)) {
+          push_finger_down(x, y, emulated_touch_id_, touch_events);
+        }
       }
       break;
     case SDL_MOUSEBUTTONUP:
@@ -431,7 +431,9 @@ void Platform::process_input_event(const SDL_Event &event) {
     }
     case SDL_KEYUP: {
       const auto code = KeycodeConverter::convert(event.key.keysym.scancode);
-      if (code == KEY_RESERVED) break;
+      if (code == KEY_RESERVED) {
+        break;
+      }
       if (code == KEY_ESC) {
         input_key_event(SDL_SCANCODE_AC_BACK, 0);
         break;
@@ -447,10 +449,9 @@ void Platform::process_input_event(const SDL_Event &event) {
     }
     // Touch screen
     case SDL_FINGERDOWN: {
-      if (!calculate_touch_coordinates(event, x, y))
-        break;
-      push_finger_down(x, y, event.tfinger.fingerId, touch_events);
-
+      if (calculate_touch_coordinates(event, x, y)) {
+        push_finger_down(x, y, event.tfinger.fingerId, touch_events);
+      }
       break;
     }
     case SDL_FINGERUP: {
@@ -458,9 +459,9 @@ void Platform::process_input_event(const SDL_Event &event) {
       break;
     }
     case SDL_FINGERMOTION: {
-      if (!calculate_touch_coordinates(event, x, y))
-        break;
-      push_finger_motion(x, y, event.tfinger.fingerId, touch_events);
+      if (calculate_touch_coordinates(event, x, y)) {
+        push_finger_motion(x, y, event.tfinger.fingerId, touch_events);
+      }
       break;
     }
     default:

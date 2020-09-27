@@ -84,6 +84,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
  private:
   void process_events();
   void process_input_event(const SDL_Event &event);
+  bool mbd_event_fliter(const SDL_Event &event);
 
   bool adjust_coordinates(std::int32_t &x, std::int32_t &y);
   bool adjust_coordinates(SDL_Window *window, std::int32_t &x, std::int32_t &y);

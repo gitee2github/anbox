@@ -82,7 +82,6 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   void update_state(const wm::WindowState::List &states) override;
   void set_focus_from_android(bool just_set) override;
 
-  bool check_db_clicked(int x, int y);
   bool checkResizeable() override;
   void setResizing(bool resizing) override;
   bool check_closing() { return is_closing_; }
@@ -102,6 +101,10 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   static SDL_HitTestResult on_window_hit(SDL_Window *window, const SDL_Point *pt, void *data);
   void close();
   void switch_window_state();
+  bool get_system_time(long long &time);
+  bool check_db_clicked(int x, int y);
+  bool check_point_same_as_last(int x, int y);
+  bool check_window_no_move(int wnd_x, int wnd_y);
 
   std::atomic<bool> initialized{false};
   long long last_update_time{ 0 };
@@ -111,10 +114,10 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
   EGLNativeDisplayType native_display_;
   SDL_Window *window_;
   long long lastClickTime{ 0 };
-  int last_point_x{ 0 };
-  int last_point_y{ 0 };
-  int last_wnd_x{ 0 };
-  int last_wnd_y{ 0 };
+  int last_point_x_{ 0 };
+  int last_point_y_{ 0 };
+  int last_wnd_x_{ 0 };
+  int last_wnd_y_{ 0 };
   std::uint32_t visible_property;
   bool fullscreen_ = false;
   bool is_title_enable_ = true;

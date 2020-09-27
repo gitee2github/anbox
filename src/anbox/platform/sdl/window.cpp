@@ -139,11 +139,11 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
       BOOST_THROW_EXCEPTION(std::runtime_error("SDL subsystem not supported"));
   }
 
-  struct timeval now;
-  memset(&now, 0, sizeof(struct timeval));
-  gettimeofday(&now, NULL);
-  last_update_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
-  lastClickTime = last_update_time;
+  if (get_system_time(last_update_time)) {
+    lastClickTime = last_update_time;
+  } else {
+    ERROR("get system time error!");
+  }
   auto window_size_ptr = custom_window_map.find(title);
   if (window_size_ptr != custom_window_map.end()) {
     SDL_SetWindowMinimumSize(window_, window_size_ptr->second.minimum_width, window_size_ptr->second.minimum_height);
@@ -154,6 +154,16 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
 }
 
 Window::~Window() {}
+
+bool Window::get_system_time(long long &time) {
+  struct timeval now;
+  memset(&now, 0, sizeof(struct timeval));
+  if (gettimeofday(&now, NULL) >= 0) {
+    time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+    return true;
+  }
+  return false;
+}
 
 void Window::destroy_window() {
   if (window_) {
@@ -197,7 +207,7 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
     if (pt->x > 0 && pt->x < button_area_width &&
             ((platform_window->get_property() & HIDE_BACK) != HIDE_BACK)) {
       std::shared_ptr<anbox::platform::sdl::Window::Observer> observer = platform_window->observer_;
-      if (observer ) {
+      if (observer) {
         platform_window->set_closing(true);
         observer->window_wants_focus(platform_window->id());
         observer->input_key_event(SDL_SCANCODE_AC_BACK, 1);
@@ -242,30 +252,38 @@ SDL_HitTestResult Window::on_window_hit(SDL_Window *window, const SDL_Point *pt,
   return SDL_HITTEST_NORMAL;
 }
 
+bool Window::check_point_same_as_last(int x, int y) {
+  return x == last_point_x_ && y == last_point_y_;
+}
+
+bool Window::check_window_no_move(int wnd_x, int wnd_y) {
+  return wnd_x == last_wnd_x_ && wnd_y == last_wnd_y_;
+}
+
 bool Window::check_db_clicked(int x, int y) {
   bool result = false;
+  long long current_time = 0;
+  if (!get_system_time(current_time)) {
+    return false;
+  }
+
   int wnd_x = 0;
   int wnd_y = 0;
   SDL_GetWindowPosition(window_, &wnd_x, &wnd_y);
-  struct timeval now;
-  memset(&now, 0, sizeof(struct timeval));
-  gettimeofday(&now, NULL);
-  long long current_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
-  if (x == last_point_x && y == last_point_y && 
-      wnd_x == last_wnd_x && wnd_y == last_wnd_y) {
-    if (current_time - lastClickTime <= timespan_db_click) {
-      lastClickTime = current_time - timespan_db_click;
-      result = true;
-    }
-  }
-  if (!result){
+  if (check_point_same_as_last(x, y) && 
+      check_window_no_move(wnd_x, wnd_y) &&
+      current_time - lastClickTime <= timespan_db_click) {
+    lastClickTime = current_time - timespan_db_click;
+    result = true;
+  } else {
     lastClickTime = current_time;
   }
 
-  last_wnd_x = wnd_x;
-  last_wnd_y = wnd_y;
-  last_point_x = x;
-  last_point_y = y;
+  last_point_x_ = x;
+  last_point_y_ = y;
+  last_wnd_x_ = wnd_x;
+  last_wnd_y_ = wnd_y;
+
   return result;
 }
 
@@ -295,21 +313,17 @@ void Window::process_event(const SDL_Event &event) {
     // SDL_WINDOWEVENT_SIZE_CHANGED is always sent.
     case SDL_WINDOWEVENT_SIZE_CHANGED:
       if (observer_) {
-        struct timeval now;
-        memset(&now, 0, sizeof(struct timeval));
-        gettimeofday(&now, NULL);
-        last_resize_time_ = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
-        resizing_ = true;
+        if (get_system_time(last_resize_time_)) {
+          resizing_ = true;
+        }
         observer_->window_resized(id_, event.window.data1, event.window.data2);
       }
       break;
     case SDL_WINDOWEVENT_MOVED:
       if (observer_) {
-        struct timeval now;
-        memset(&now, 0, sizeof(struct timeval));
-        gettimeofday(&now, NULL);
-        last_resize_time_ = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
-        resizing_ = true;
+        if (get_system_time(last_resize_time_)) {
+          resizing_ = true;
+        }
         observer_->window_moved(id_, event.window.data1, event.window.data2);
       }
       break;
@@ -332,10 +346,10 @@ Window::Id Window::id() const { return id_; }
 std::uint32_t Window::window_id() const { return SDL_GetWindowID(window_); }
 
 bool Window::checkResizeable() {
-  struct timeval now;
-  memset(&now, 0, sizeof(struct timeval));
-  gettimeofday(&now, NULL);
-  long long time_now = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+  long long time_now = 0;
+  if (!get_system_time(time_now)) {
+    return false;
+  }
   if (resizing_ && time_now - last_resize_time_ > RESIZE_TIMESPAN) {
     last_frame_ = frame();
     resizing_ = false;
@@ -363,20 +377,29 @@ void Window::update_state(const wm::WindowState::List &states) {
       break;
     }
   }
+
   is_title_enable_ = is_title_enable;
+  bool need_fullscreen = false;
   for (auto ws : states)
   {
-    if (!fullscreen_ && ws.videofullscreen()) {
-      SDL_SetWindowFullscreen(window_, SDL_WINDOW_FULLSCREEN_DESKTOP);
-      fullscreen_ = true;
-    } else if (fullscreen_ && !ws.videofullscreen()) {
-      SDL_SetWindowFullscreen(window_, 0);
-      fullscreen_ = false;
-    }
-    if (fullscreen_) {
-      return;
+    if (ws.videofullscreen()) {
+      need_fullscreen = true;
+      break;
     }
   }
+
+  if (!fullscreen_ && need_fullscreen) {
+    SDL_SetWindowFullscreen(window_, SDL_WINDOW_FULLSCREEN_DESKTOP);
+  } else if (fullscreen_ && !need_fullscreen) {
+    SDL_SetWindowFullscreen(window_, 0);
+  }
+
+  fullscreen_ = need_fullscreen;
+  if (fullscreen_) {
+    // if window is in fullscreen state, ignore position and size change
+    return;
+  }
+
   if (!initialized.load() && !states.empty()) {
     int w = 0;
     int h = 0;
@@ -401,10 +424,10 @@ void Window::update_state(const wm::WindowState::List &states) {
         y == rect.top()) {
       return;
     }
-    struct timeval now;
-    memset(&now, 0, sizeof(struct timeval));
-    gettimeofday(&now, NULL);
-    long long current_time = USEC_PER_SEC * (now.tv_sec) + now.tv_usec;
+    long long current_time = 0;
+    if (!get_system_time(current_time)) {
+      return;
+    }
     if (current_time - last_update_time >= APP_START_MAX_TIME) {
       INFO("window initialized by timeout");
       initialized = true;
@@ -419,6 +442,10 @@ void Window::update_state(const wm::WindowState::List &states) {
 }
 
 void Window::restore_window() {
+  if (window_ == nullptr) {
+    ERROR("window not initialized!");
+    return;
+  }
   SDL_ShowWindow(window_);
   SDL_RaiseWindow(window_);
   auto flags = SDL_GetWindowFlags(window_);
