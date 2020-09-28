@@ -20,10 +20,10 @@
 
 class ReadBuffer {
  public:
-  ReadBuffer(size_t bufSize);
+  explicit ReadBuffer(size_t bufSize);
   ~ReadBuffer();
   int getData(IOStream *stream);              // get fresh data from the stream
-  unsigned char *buf() { return m_readPtr; }  // return the next read location
+  unsigned char * const buf() const{ return m_readPtr; }  // return the next read location
   size_t validData() {
     return m_validData;
   }                             // return the amount of valid data in readptr

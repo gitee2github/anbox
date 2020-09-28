@@ -1059,7 +1059,10 @@ void Renderer::tessellate(std::vector<anbox::graphics::Primitive> &primitives,
   anbox::graphics::Primitive rectangle;
   rectangle.tex_id = 0;
   rectangle.type = GL_TRIANGLE_STRIP;
-
+  if (buf_size.width() == 0 || buf_size.height() == 0){
+    ERROR("buf_size.width() or buf_size.height() invailed !");
+    return;
+  }
   GLfloat tex_left =
       static_cast<GLfloat>(renderable.crop().left()) / buf_size.width();
   GLfloat tex_top =
