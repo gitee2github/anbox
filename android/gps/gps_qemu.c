@@ -448,6 +448,9 @@ static bool setGpsSvInfo(const char *const info[]) {
         }
         if ((tempLink->gpsSvString = (char *) malloc(strlen(info[i]) + 1)) == NULL) {
             ALOGE("malloc tempLink->gpsSvString fail, error = %s\n", strerror(errno));
+	    if (tempLink != NULL) {
+	        free(tempLink);
+	    }
             goto Fail3;
         }
         strcpy(tempLink->gpsSvString, info[i]);

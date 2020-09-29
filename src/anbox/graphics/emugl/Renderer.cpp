@@ -478,10 +478,9 @@ void Renderer::drainRenderContext() {
   std::unique_lock<std::mutex> l(m_lock);
 
   RenderThreadInfo *tinfo = RenderThreadInfo::get();
-  if (!tinfo) {
+  if (!tinfo || tinfo->m_contextSet.empty()) {
     return;
   }
-  if (tinfo->m_contextSet.empty()) return;
   for (std::set<HandleType>::iterator it = tinfo->m_contextSet.begin();
        it != tinfo->m_contextSet.end(); ++it) {
     HandleType contextHandle = *it;
@@ -517,19 +516,19 @@ void Renderer::DestroyRenderContext(HandleType p_context) {
   if (!tinfo) {
     return;
   }
-    int tid = tinfo->m_tid;
-    // The new emulator manages render contexts per guest process.
-    // Fall back to per-thread management if the system image does not
-    // support it.
-    //if (tinfo->m_contextSet.empty()) return;
-    if (tid > 0) {
-        auto ite = m_procOwnedRenderContext.find(tid);
-        if (ite != m_procOwnedRenderContext.end()) {
-            ite->second.erase(p_context);
-        }
-    } else {
-        tinfo->m_contextSet.erase(p_context);
+  int tid = tinfo->m_tid;
+  // The new emulator manages render contexts per guest process.
+  // Fall back to per-thread management if the system image does not
+  // support it.
+  //if (tinfo->m_contextSet.empty()) return;
+  if (tid > 0) {
+    auto ite = m_procOwnedRenderContext.find(tid);
+    if (ite != m_procOwnedRenderContext.end()) {
+      ite->second.erase(p_context);
     }
+  } else {
+     tinfo->m_contextSet.erase(p_context);
+  }
 }
 
 void Renderer::DestroyWindowSurface(HandleType p_surface) {
