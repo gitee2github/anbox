@@ -23,7 +23,7 @@
 
 ReadBuffer::ReadBuffer(size_t bufsize) {
   m_size = bufsize;
-  if (m_size == 0 ) {
+  if (m_size == 0) {
     ERROR("bufsize invailed !");
     return;
   }
