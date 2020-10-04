@@ -415,6 +415,7 @@ void Window::update_state(const wm::WindowState::List &states) {
       int temp = ws.frame().width() * ws.frame().height();
       if (temp >= area) {
         rect = ws.frame();
+	area = temp;
       }
     }
 
