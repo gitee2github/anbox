@@ -41,6 +41,7 @@ ToastWindow::ToastWindow(const std::shared_ptr<Renderer> &renderer, const graphi
 #endif
     default:
       ERROR("Unknown subsystem (%d)", info.subsystem);
+      break;
   }
   SDL_HideWindow(window_);
 
