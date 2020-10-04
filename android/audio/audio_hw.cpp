@@ -579,7 +579,6 @@ static int out_set_volume(struct audio_stream_out *stream, float left, float rig
 static void *out_write_worker(void * args)
 {
     struct generic_stream_out *out = (struct generic_stream_out *)args;
-    struct pcm *pcm = NULL;
     uint8_t *buffer = NULL;
     int buffer_frames;
     int buffer_size;
@@ -649,6 +648,9 @@ static void *out_write_worker(void * args)
     }
     if (buffer) {
         free(buffer);
+    }
+    if (fd >= 0) {
+      close(fd);
     }
 
     return NULL;
@@ -735,8 +737,6 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
     }
 
     out->last_write_time_us = now_us + sleep_time_us;
-
-    struct generic_audio_device *adev = out->dev;
 
     pthread_mutex_unlock(&out->lock);
 
@@ -1138,7 +1138,6 @@ static int in_standby(struct audio_stream *stream)
 static void *in_read_worker(void * args)
 {
     struct generic_stream_in *in = (struct generic_stream_in *)args;
-    struct pcm *pcm = NULL;
     uint8_t *buffer = NULL;
     size_t buffer_frames;
     int buffer_size;
@@ -1217,6 +1216,9 @@ static void *in_read_worker(void * args)
     }
     if (buffer) {
         free(buffer);
+    }
+    if (fd >= 0) {
+      close(fd);
     }
     return NULL;
 }
@@ -1365,8 +1367,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     if (refine_output_parameters(&config->sample_rate, &config->format, &config->channel_mask)) {
         ALOGE("Error opening output stream format %d, channel_mask %04x, sample_rate %u",
               config->format, config->channel_mask, config->sample_rate);
-        ret = -EINVAL;
-        goto error;
+        return -EINVAL;
     }
 
     out = (struct generic_stream_out *)calloc(1, sizeof(struct generic_stream_out));
@@ -1424,9 +1425,6 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     }
     *stream_out = &out->stream;
-
-error:
-
     return ret;
 }
 
@@ -1557,14 +1555,12 @@ static int adev_open_input_stream(struct audio_hw_device *dev,
     if (refine_input_parameters(&config->sample_rate, &config->format, &config->channel_mask)) {
         ALOGE("Error opening input stream format %d, channel_mask %04x, sample_rate %u",
               config->format, config->channel_mask, config->sample_rate);
-        ret = -EINVAL;
-        goto error;
+        return -EINVAL;
     }
 
     in = (struct generic_stream_in *)calloc(1, sizeof(struct generic_stream_in));
     if (!in) {
-        ret = -ENOMEM;
-        goto error;
+        return -ENOMEM;
     }
     ALOGD("adev_open_input_stream enter before lock");
 
@@ -1614,9 +1610,7 @@ static int adev_open_input_stream(struct audio_hw_device *dev,
     }
 
     *stream_in = &in->stream;
-
-error:
-    return ret;
+     return ret;
 }
 
 static int adev_dump(const audio_hw_device_t *dev, int fd)

@@ -47,8 +47,10 @@ static int redirect_to_null(int flags, int fd) {
   if (fd2 == fd)
     return fd;
 
-  if (dup2(fd2, fd) < 0)
+  if (dup2(fd2, fd) < 0) {
+    close(fd2);
     return -1;
+  }
 
   close(fd2);
   return fd;

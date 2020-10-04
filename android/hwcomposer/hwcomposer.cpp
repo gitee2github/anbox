@@ -105,10 +105,6 @@ static int hwc_prepare(hwc_composer_device_1_t* dev, size_t numDisplays,
         for (; i < num_hw_layers; i++) {
           hwc_layer_1_t* layer = &displays[0]->hwLayers[num_hw_layers - 1 - i];
 
-#if 0
-          dump_layer(layer);
-#endif
-
           if (layer->flags & HWC_SKIP_LAYER) {
             // All layers below and including this one will be drawn into the
             // framebuffer. Stop marking further layers as HWC_OVERLAY.

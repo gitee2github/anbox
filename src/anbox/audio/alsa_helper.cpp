@@ -77,6 +77,9 @@ int AlsaHelper::set_pcm_params(hwparams params)
     int error;
     mhwparams = params;
     error = set_params();
+    if (error < 0) {
+        return error;
+    }
     significant_bits_per_sample = snd_pcm_format_width(mhwparams.format);
     bits_per_sample = snd_pcm_format_physical_width(mhwparams.format);
     bits_per_frame = bits_per_sample * mhwparams.channels;
@@ -143,11 +146,7 @@ size_t AlsaHelper::pcm_read(char *readBuf, size_t length)
     int error = 0;
     int wait_times = 100;
     while (count > 0) {
-        if (mmap_flag) {
-            r = snd_pcm_mmap_readi(mhandle, readBuf, count);
-        } else {
-            r = snd_pcm_readi(mhandle, readBuf, count);
-        }
+        r = snd_pcm_readi(mhandle, readBuf, count);
         // handle snd pcm read  result
         if (r == -EAGAIN || (r >= 0 && static_cast<size_t>(r) < count)) {
             DEBUG("pcm read data no complete, has read size= %d", r);
@@ -288,9 +287,9 @@ int AlsaHelper::xrun()
     if (snd_pcm_status_get_state(status) == SND_PCM_STATE_DRAINING) {
         if (stream_type == SND_PCM_STREAM_CAPTURE) {
             if ((res = snd_pcm_prepare(mhandle)) < 0) {
-            ERROR("overrun, it couldn't translate to prepare status");
-            return  res;
-        }
+                ERROR("overrun, it couldn't translate to prepare status");
+                return  res;
+            }
             return res;
         }
     }
@@ -309,7 +308,7 @@ snd_pcm_uframes_t AlsaHelper::get_period_frames_bytes() const
 
 std::string AlsaHelper::get_usb_audio_device_name() const
 {
-    return "pulse";//using PulseAudio
+    return "pulse"; // using PulseAudio
 }
 
 }

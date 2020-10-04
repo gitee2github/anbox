@@ -42,9 +42,6 @@ bool AudioSource::connect_audio()
     clock_t start = clock();
     int res = 0;
     std::string audioName = malsahelper.get_usb_audio_device_name();
-    if (audioName == "default") {
-        return false;
-    }
     res = malsahelper.open_pcm_device(audioName.c_str(), SND_PCM_STREAM_CAPTURE, 0);
     if (res == 0) {
         audio::hwparams params;

@@ -337,6 +337,16 @@ static int gralloc_alloc(alloc_device_t* dev,
         if (!cb->hostHandle) {
            // Could not create colorbuffer on host !!!
            close(fd);
+           if (cb->ashmemSize > 0 && cb->mappedPid == getpid()) {
+              void *vaddr;
+              int err = munmap((void *)cb->ashmemBase, cb->ashmemSize);
+              if (err) {
+                    ERR("gralloc (%p) unmap faild",cb);
+                    return -EINVAL;
+              }
+              cb->ashmemBase = 0;
+              cb->mappedPid = 0;
+           }
            delete cb;
            return -EIO;
         }
@@ -594,7 +604,6 @@ static int gralloc_unregister_buffer(gralloc_module_t const* module,
     // (through register_buffer)
     //
     if (cb->ashmemSize > 0 && cb->mappedPid == getpid()) {
-        void *vaddr;
         int err = munmap((void *)cb->ashmemBase, cb->ashmemSize);
         if (err) {
             ERR("gralloc_unregister_buffer(%p): unmap failed", cb);

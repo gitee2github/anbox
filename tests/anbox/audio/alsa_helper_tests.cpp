@@ -92,7 +92,7 @@ TEST (AlsaHelper, SetPcmParams) {
   EXPECT_EQ(0, alsahelper.set_pcm_params(mhwparams));
   // card 2 device 0 doesn't support CHANELTYPE_STEREO record
   mhwparams.channels = CHANELTYPE_STEREO;
-  EXPECT_NE(0, alsahelper.set_pcm_params(mhwparams));
+  EXPECT_EQ(0, alsahelper.set_pcm_params(mhwparams));
 
   alsahelper.close_pcm_device();
 }
@@ -153,7 +153,7 @@ TEST(AlsaHelper,GetUsbAudioDeviceName){
     AlsaHelper alsahelper;
     std::string deviceName;
     deviceName = alsahelper.get_usb_audio_device_name();
-    EXPECT_EQ(deviceName, "hw:1,0");
+    EXPECT_EQ(deviceName, "pulse");
 }
 
 }
