@@ -111,7 +111,6 @@ $ sudo apt install gcc libncurses-dev bison flex libssl-dev cmake dkms build-ess
 
 ### Build
 
- * [Build Android image](docs/build-android.md)
  * [Apply SDL patch](docs/apply_SDL_patch.md)
  * [Install binder & ashmem module](docs/kernel_module.md)
 
