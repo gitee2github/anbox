@@ -23,12 +23,24 @@
 
 ReadBuffer::ReadBuffer(size_t bufsize) {
   m_size = bufsize;
+  if (m_size == 0) {
+    ERROR("bufsize invailed !");
+    return;
+  }
   m_buf = static_cast<unsigned char*>(malloc(m_size * sizeof(unsigned char)));
+  if (!m_buf) {
+    ERROR("Failed to alloc %zu bytes for ReadBuffer", (m_size * sizeof(unsigned char)));
+    return;
+  }
   m_validData = 0;
   m_readPtr = m_buf;
 }
 
-ReadBuffer::~ReadBuffer() { free(m_buf); }
+ReadBuffer::~ReadBuffer() { 
+  if (m_buf) {
+    free(m_buf);
+  }
+}
 
 int ReadBuffer::getData(IOStream* stream) {
   if (stream == NULL) return -1;
