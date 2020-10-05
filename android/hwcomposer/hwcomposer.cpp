@@ -162,6 +162,10 @@ static void check_sync_fds(size_t numDisplays, hwc_display_contents_1_t** displa
     }
 }
 
+static bool string_starts_with(const std::string &text, const std::string &prefix) {
+    return text.compare(0, prefix.size(), prefix) == 0;
+}
+
 static int hwc_set(hwc_composer_device_1_t* dev, size_t numDisplays,
                    hwc_display_contents_1_t** displays) {
     auto context = reinterpret_cast<HwcContext*>(dev);
@@ -190,9 +194,9 @@ static int hwc_set(hwc_composer_device_1_t* dev, size_t numDisplays,
             return -EINVAL;
         }
 
-        std::string str_anr_crash_dialog(layer->name);
-        if ((str_anr_crash_dialog.find("Application Not Responding") != -1) ||
-                (str_anr_crash_dialog.find("Application Error") != -1)) {
+        std::string str(layer->name);
+        if (string_starts_with(str, "Application Not Responding") ||
+                string_starts_with(str, "Application Error")) {
             rcEnc->rcPostLayer(rcEnc,
                            layer->name,
                            cb->hostHandle,
@@ -297,6 +301,7 @@ static int hwc_get_display_attributes(hwc_composer_device_1* dev,
         break;
       default:
         ALOGE("Unknown attribute value 0x%02x", *attributes);
+        break;
     }
     ++attributes;
     ++values;
