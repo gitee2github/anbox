@@ -194,12 +194,12 @@ void Platform::create_ime_socket() {
     return;
   }
   socket_addr.sun_family = AF_UNIX;
-  if (ime_socket_file_.length() >= sizeof(socket_addr.sun_path) - 1) {
+  if (ime_socket_file_.length() >= sizeof(socket_addr.sun_path)) {
     ERROR("Create ime failed, socket path too long");
     close(ime_socket);
     return;
   }
-  strcpy(socket_addr.sun_path, ime_socket_file_.c_str());
+  strncpy(socket_addr.sun_path, ime_socket_file_.c_str(), sizeof(socket_addr.sun_path));
   if (unlink(ime_socket_file_.c_str()) < 0) {
     WARNING("unlink failed!");
   }
@@ -421,7 +421,9 @@ void Platform::process_input_event(const SDL_Event &event) {
       break;
     // Keyboard
     case SDL_KEYDOWN: {
-      const auto code = KeycodeConverter::convert(event.key.keysym.scancode);
+      // Some apps may not support small keyboard, so we change it before sending.
+      auto code_with_deal = removeKPPropertyIfNeeded(event.key.keysym.scancode);
+      const auto code = KeycodeConverter::convert(code_with_deal);
       if (code == KEY_RESERVED) break;
       if (code == KEY_ESC) {
         input_key_event(SDL_SCANCODE_AC_BACK, 1);
@@ -431,7 +433,8 @@ void Platform::process_input_event(const SDL_Event &event) {
       break;
     }
     case SDL_KEYUP: {
-      const auto code = KeycodeConverter::convert(event.key.keysym.scancode);
+      auto code_with_deal = removeKPPropertyIfNeeded(event.key.keysym.scancode);
+      const auto code = KeycodeConverter::convert(code_with_deal);
       if (code == KEY_RESERVED) {
         break;
       }
@@ -487,6 +490,22 @@ int Platform::find_touch_slot(int id) {
       return i;
   }
   return -1;
+}
+
+// If we press small keyboard when numlock is unlocked, some apps may not deal with this special number.
+// This number is called KP number, and the KP Enter to, so we change it to normal number before sending 
+// to android, so that apps can deal it.
+SDL_Scancode Platform::removeKPPropertyIfNeeded(const SDL_Scancode &scan_code) {
+  if (scan_code == SDL_SCANCODE_KP_ENTER) {
+    return SDL_SCANCODE_RETURN;
+  }
+
+  if ((key_mod_ & KMOD_NUM) != 0 && scan_code >= SDL_SCANCODE_KP_1 &&
+          scan_code <= SDL_SCANCODE_KP_0) {
+    return static_cast<SDL_Scancode>(scan_code - SDL_SCANCODE_KP_1 + SDL_SCANCODE_1);
+  }
+
+  return scan_code;
 }
 
 void Platform::push_slot(std::vector<input::Event> &touch_events, int slot) {
@@ -631,6 +650,15 @@ void Platform::window_wants_focus(const Window::Id &id) {
     return;
   }
 
+  sync_mod_state();
+
+  if (auto window = w->second.lock()) {
+    focused_sdl_window_id_ = window->window_id();
+    window_manager_->set_focused_task(window->task());
+  }
+}
+
+void Platform::sync_mod_state() {
   // if window's modstate is not the same as android, send
   // capslock or numlock message to android to change it.
   auto mod_state = SDL_GetModState();
@@ -643,11 +671,6 @@ void Platform::window_wants_focus(const Window::Id &id) {
     input_key_event(SDL_SCANCODE_CAPSLOCK, 1);
     input_key_event(SDL_SCANCODE_CAPSLOCK, 0);
     key_mod_ ^= KMOD_CAPS;
-  }
-
-  if (auto window = w->second.lock()) {
-    focused_sdl_window_id_ = window->window_id();
-    window_manager_->set_focused_task(window->task());
   }
 }
 
