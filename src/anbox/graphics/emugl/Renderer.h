@@ -261,6 +261,7 @@ class Renderer : public anbox::graphics::Renderer {
   bool unbind_locked();
 
  private:
+  HandleType getEGLImageIndex();
   HandleType genHandle();
 
   bool bindWindow_locked(RendererWindow* window);
@@ -274,6 +275,7 @@ class Renderer : public anbox::graphics::Renderer {
                   const Renderable& renderable);
 
  private:
+  HandleType eglImageIndex{0};
   static Renderer* s_renderer;
   static HandleType s_nextHandle;
   std::mutex m_lock;

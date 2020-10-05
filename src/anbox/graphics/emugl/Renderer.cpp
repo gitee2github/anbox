@@ -14,6 +14,7 @@
 * limitations under the License.
 */
 #define GLM_ENABLE_EXPERIMENTAL
+#include <map>
 #include "anbox/graphics/emugl/Renderer.h"
 #include "anbox/graphics/emugl/DispatchTables.h"
 #include "anbox/graphics/emugl/RenderThreadInfo.h"
@@ -37,12 +38,13 @@
 #include <glm/gtx/transform.hpp>
 #pragma GCC diagnostic pop
 
+std::map<uint32_t , void *> gEGLImageMap;
+
 int64_t getCurrentLocalTimeStamp()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
-
-
+    
 namespace {
 
 // Helper class to call the bind_locked() / unbind_locked() properly.
@@ -664,8 +666,8 @@ void Renderer::cleanupProcGLObjects(int tid) {
         auto procIte = m_procOwnedEGLImages.find(tid);
         if (procIte != m_procOwnedEGLImages.end()) {
             for (auto eglImg : procIte->second) {
-                s_egl.eglDestroyImageKHR(m_eglDisplay,
-                            reinterpret_cast<EGLImageKHR>(reinterpret_cast<HandleType>(eglImg)));
+                if (gEGLImageMap.count(eglImg) == 0) break;
+                s_egl.eglDestroyImageKHR(m_eglDisplay, gEGLImageMap[eglImg]);
             }
             m_procOwnedEGLImages.erase(procIte);
         }
@@ -871,6 +873,11 @@ bool Renderer::bindContext(HandleType p_context, HandleType p_drawSurface,
   return true;
 }
 
+HandleType Renderer::getEGLImageIndex()
+{
+    return eglImageIndex++; // allow over flow
+}
+
 HandleType Renderer::createClientImage(HandleType context, EGLenum target,
                                        GLuint buffer) {
   RenderContextPtr ctx(NULL);
@@ -890,8 +897,11 @@ HandleType Renderer::createClientImage(HandleType context, EGLenum target,
   EGLImageKHR image =
       s_egl.eglCreateImageKHR(m_eglDisplay, eglContext, target,
                               reinterpret_cast<EGLClientBuffer>(buffer), NULL);
-
-    HandleType imgHnd = static_cast<HandleType>(reinterpret_cast<uintptr_t>(image));
+  HandleType imgHnd = 0;
+  do {
+    imgHnd = getEGLImageIndex();
+  } while (gEGLImageMap.count(imgHnd) != 0);
+  gEGLImageMap[imgHnd] = image;
 
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
     if (!tInfo) {
@@ -906,9 +916,11 @@ HandleType Renderer::createClientImage(HandleType context, EGLenum target,
 }
 
 EGLBoolean Renderer::destroyClientImage(HandleType image) {
-  EGLBoolean ret = s_egl.eglDestroyImageKHR(m_eglDisplay,
-                                  reinterpret_cast<EGLImageKHR>(image));
+    if (gEGLImageMap.count(image) == 0) return false;
+    EGLBoolean ret = s_egl.eglDestroyImageKHR(m_eglDisplay,
+                                  gEGLImageMap[image]);
     if (!ret) return false;
+    gEGLImageMap.erase(image);
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
     if (!tInfo) {
         return false;
