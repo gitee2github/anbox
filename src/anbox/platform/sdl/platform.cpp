@@ -194,12 +194,12 @@ void Platform::create_ime_socket() {
     return;
   }
   socket_addr.sun_family = AF_UNIX;
-  if (ime_socket_file_.length() >= sizeof(socket_addr.sun_path) - 1) {
+  if (ime_socket_file_.length() >= sizeof(socket_addr.sun_path)) {
     ERROR("Create ime failed, socket path too long");
     close(ime_socket);
     return;
   }
-  strcpy(socket_addr.sun_path, ime_socket_file_.c_str());
+  strncpy(socket_addr.sun_path, ime_socket_file_.c_str(), sizeof(socket_addr.sun_path));
   if (unlink(ime_socket_file_.c_str()) < 0) {
     WARNING("unlink failed!");
   }
@@ -649,6 +649,15 @@ void Platform::window_wants_focus(const Window::Id &id) {
     return;
   }
 
+  sync_mod_state();
+
+  if (auto window = w->second.lock()) {
+    focused_sdl_window_id_ = window->window_id();
+    window_manager_->set_focused_task(window->task());
+  }
+}
+
+void Platform::sync_mod_state() {
   // if window's modstate is not the same as android, send
   // capslock or numlock message to android to change it.
   auto mod_state = SDL_GetModState();
@@ -661,11 +670,6 @@ void Platform::window_wants_focus(const Window::Id &id) {
     input_key_event(SDL_SCANCODE_CAPSLOCK, 1);
     input_key_event(SDL_SCANCODE_CAPSLOCK, 0);
     key_mod_ ^= KMOD_CAPS;
-  }
-
-  if (auto window = w->second.lock()) {
-    focused_sdl_window_id_ = window->window_id();
-    window_manager_->set_focused_task(window->task());
   }
 }
 
