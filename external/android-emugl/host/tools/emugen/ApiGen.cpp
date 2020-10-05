@@ -835,6 +835,11 @@ int ApiGen::genDecoderImpl(const std::string &filename)
     fprintf(fp, "#include \"ProtocolUtils.h\"\n\n");
     fprintf(fp, "#include \"ChecksumCalculatorThreadInfo.h\"\n\n");
     fprintf(fp, "#include <stdio.h>\n\n");
+    if (filename.find("gles2_dec.cpp") != filename.npos ||
+        filename.find("gles1_dec.cpp") != filename.npos ) {
+        fprintf(fp, "#include <map>\n\n");
+        fprintf(fp, "extern std::map<uint32_t, void*> gEGLImageMap;\n");
+    }
     fprintf(fp, "typedef unsigned int tsize_t; // Target \"size_t\", which is 32-bit for now. It may or may not be the same as host's size_t when emugen is compiled.\n\n");
 
     // helper macros
@@ -919,7 +924,14 @@ int ApiGen::genDecoderImpl(const std::string &filename)
         std::string printString = "";
         for (size_t i = 0; i < e->vars().size(); i++) {
             Var *v = &e->vars()[i];
-            if (!v->isVoid())  printString += (v->isPointer() ? "%p(%u)" : v->type()->printFormat()) + " ";
+            if (!v->isVoid()) {
+                if (strcmp(e->name().c_str(), "glEGLImageTargetTexture2DOES") == 0 &&
+                    strcmp(v->name().c_str(), "image") == 0) {
+                    printString += "0x%08x ";
+                } else {
+                    printString += (v->isPointer() ? "%p(%u)" : v->type()->printFormat()) + " ";
+                }
+            }
         }
         printString += "";
         // TODO - add for return value;
@@ -944,9 +956,14 @@ int ApiGen::genDecoderImpl(const std::string &filename)
                         totalTmpBuffOffset.c_str());
             }
 
-
             if (pass == PASS_FunctionCall) {
-                fprintf(fp, "\t\t\tthis->%s(", e->name().c_str());
+                // for egl_image handle add by kpandroid
+                if (strcmp(e->name().c_str(), "glEGLImageTargetTexture2DOES") == 0) {
+                    fprintf(fp, "\t\t\tif (gEGLImageMap.count(var_image) > 0)\n");
+                    fprintf(fp, "\t\t\t\tthis->%s(", e->name().c_str());
+                } else {
+                    fprintf(fp, "\t\t\tthis->%s(", e->name().c_str());
+                }
                 if (e->customDecoder()) {
                     fprintf(fp, "this"); // add a context to the call
                 }
@@ -983,18 +1000,34 @@ int ApiGen::genDecoderImpl(const std::string &filename)
 
                 if (!v->isPointer()) {
                     if (pass == PASS_VariableDeclarations) {
-                        fprintf(fp,
-                                "\t\t\t%s var_%s = Unpack<%s,uint%u_t>(ptr + %s);\n",
-                                var_type_name,
-                                var_name,
-                                var_type_name,
-                                var_type_bytes * 8U,
-                                varoffset.c_str());
+                        if (strcmp(e->name().c_str(), "glEGLImageTargetTexture2DOES") == 0 &&
+                            strcmp(var_name, "image") == 0) {
+                            fprintf(fp,
+                                    "\t\t\t%s var_%s = Unpack<%s,uint%u_t>(ptr + %s);\n",
+                                    "uint32_t",
+                                    var_name,
+                                    "uint32_t",
+                                    4 * 8U,
+                                    varoffset.c_str());
+                        } else {
+                            fprintf(fp,
+                                    "\t\t\t%s var_%s = Unpack<%s,uint%u_t>(ptr + %s);\n",
+                                    var_type_name,
+                                    var_name,
+                                    var_type_name,
+                                    var_type_bytes * 8U,
+                                    varoffset.c_str());
+                        }
                     }
 
                     if (pass == PASS_FunctionCall ||
                         pass == PASS_DebugPrint) {
-                        fprintf(fp, "var_%s", var_name);
+                        if (strcmp(e->name().c_str(), "glEGLImageTargetTexture2DOES") == 0 &&
+                            pass == PASS_FunctionCall && strcmp(var_name, "image") == 0) {
+                            fprintf(fp, "gEGLImageMap[var_%s]", var_name);
+                        } else {
+                            fprintf(fp, "var_%s", var_name);
+                        }
                     }
                     varoffset += " + " + toString(var_type_bytes);
                     continue;
