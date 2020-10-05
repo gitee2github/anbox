@@ -209,6 +209,7 @@ void Platform::create_ime_socket() {
     close(ime_socket);
     return;
   }
+  ::chmod(ime_socket_file_.c_str(), 0750);
   rc = listen(ime_socket, 1);
   if (rc == -1) {
     ERROR("Listen ime socket failed");

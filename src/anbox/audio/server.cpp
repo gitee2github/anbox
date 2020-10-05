@@ -91,7 +91,7 @@ Server::Server(const std::shared_ptr<Runtime>& rt, const std::shared_ptr<platfor
 
   // FIXME: currently creating the socket creates it with the rights of
   // the user we're running as. As this one is mapped into the container
-  ::chmod(socket_file_.c_str(), 0777);
+  ::chmod(socket_file_.c_str(), 0770);
 }
 
 Server::~Server() {}
