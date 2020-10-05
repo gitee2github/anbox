@@ -34,7 +34,6 @@ function orphanProcess(){
 function createLogdir(){
     if [ ! -d "/data/processlog" ];then
         mkdir -p /data/processlog
-        logdir=/data/processlog
     fi
 }
 
@@ -71,6 +70,7 @@ while(true)
 do
     createProcessfile
     createLogdir
+    logdir=/data/processlog
     orphanProcess
     emptyProcess
     rmLog
