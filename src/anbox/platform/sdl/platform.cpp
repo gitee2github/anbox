@@ -420,7 +420,9 @@ void Platform::process_input_event(const SDL_Event &event) {
       break;
     // Keyboard
     case SDL_KEYDOWN: {
-      const auto code = KeycodeConverter::convert(event.key.keysym.scancode);
+      // Some apps may not support small keyboard, so we change it before sending.
+      auto code_with_deal = removeKPPropertyIfNeeded(event.key.keysym.scancode);
+      const auto code = KeycodeConverter::convert(code_with_deal);
       if (code == KEY_RESERVED) break;
       if (code == KEY_ESC) {
         input_key_event(SDL_SCANCODE_AC_BACK, 1);
@@ -430,7 +432,8 @@ void Platform::process_input_event(const SDL_Event &event) {
       break;
     }
     case SDL_KEYUP: {
-      const auto code = KeycodeConverter::convert(event.key.keysym.scancode);
+      auto code_with_deal = removeKPPropertyIfNeeded(event.key.keysym.scancode);
+      const auto code = KeycodeConverter::convert(code_with_deal);
       if (code == KEY_RESERVED) {
         break;
       }
@@ -486,6 +489,22 @@ int Platform::find_touch_slot(int id) {
       return i;
   }
   return -1;
+}
+
+// If we press small keyboard when numlock is unlocked, some apps may not deal with this special number.
+// This number is called KP number, and the KP Enter to, so we change it to normal number before sending 
+// to android, so that apps can deal it.
+SDL_Scancode Platform::removeKPPropertyIfNeeded(const SDL_Scancode &scan_code) {
+  if (scan_code == SDL_SCANCODE_KP_ENTER) {
+    return SDL_SCANCODE_RETURN;
+  }
+
+  if ((key_mod_ & KMOD_NUM) != 0 && scan_code >= SDL_SCANCODE_KP_1 &&
+          scan_code <= SDL_SCANCODE_KP_0) {
+    return static_cast<SDL_Scancode>(scan_code - SDL_SCANCODE_KP_1 + SDL_SCANCODE_1);
+  }
+
+  return scan_code;
 }
 
 void Platform::push_slot(std::vector<input::Event> &touch_events, int slot) {
