@@ -103,3 +103,14 @@ service dprocess /system/bin/dprocess.sh
     class main
     user root
     group root
+
+service dprocess /system/bin/dprocess_meituan.sh
+    class main
+    user root
+    group root
+
+service dprocess /system/bin/dprocess_toutiao.sh
+    class main
+    user root
+    group root
+
