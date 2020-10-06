@@ -47,7 +47,7 @@ public:
                          size_t checksumLen);
     static void validOrDie(const void* buf,
                            size_t bufLen,
-                           void* checksum,
+                           const void* checksum,
                            size_t checksumLen,
                            const char* message);
 

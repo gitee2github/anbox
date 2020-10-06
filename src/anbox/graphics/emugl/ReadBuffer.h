@@ -22,6 +22,7 @@ class ReadBuffer {
  public:
   explicit ReadBuffer(size_t bufSize);
   ~ReadBuffer();
+  unsigned char *m_readPtr;
   int getData(IOStream *stream);              // get fresh data from the stream
   unsigned char * const buf() const{ return m_readPtr; }  // return the next read location
   size_t validData() {
@@ -30,7 +31,6 @@ class ReadBuffer {
   void consume(size_t amount);  // notify that 'amount' data has been consumed;
  private:
   unsigned char *m_buf;
-  unsigned char *m_readPtr;
   size_t m_size;
   size_t m_validData;
 };

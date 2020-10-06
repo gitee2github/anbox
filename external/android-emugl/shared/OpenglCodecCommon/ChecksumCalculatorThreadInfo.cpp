@@ -112,7 +112,7 @@ bool ChecksumCalculatorThreadInfo::validate(const void* buf,
 
 void ChecksumCalculatorThreadInfo::validOrDie(const void* buf,
                                               size_t bufLen,
-                                              void* checksum,
+                                              const void* checksum,
                                               size_t checksumLen,
                                               const char* message) {
     // We should actually call crashhandler_die(message), but I don't think we

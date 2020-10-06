@@ -198,10 +198,13 @@ ColorBuffer::ColorBuffer(EGLDisplay display, Helper* helper, HandleType hndl)
       m_blitTex(0),
       m_eglImage(NULL),
       m_blitEGLImage(NULL),
+      m_width(0),
+      m_height(0),
       m_fbo(0),
       m_internalFormat(0),
       m_display(display),
       m_helper(helper),
+      m_resizer(NULL),
       mHndl(hndl) {}
 
 ColorBuffer::~ColorBuffer() {
