@@ -21,8 +21,11 @@
 #include <limits.h>
 #include <string.h>
 
-ReadBuffer::ReadBuffer(size_t bufsize) {
-  m_size = bufsize;
+ReadBuffer::ReadBuffer(size_t bufsize)
+  : m_size(bufsize),
+    m_buf(NULL),
+    m_validData(0),
+    m_readPtr(NULL) {
   if (m_size == 0) {
     ERROR("bufsize invailed !");
     return;
@@ -32,7 +35,6 @@ ReadBuffer::ReadBuffer(size_t bufsize) {
     ERROR("Failed to alloc %zu bytes for ReadBuffer", (m_size * sizeof(unsigned char)));
     return;
   }
-  m_validData = 0;
   m_readPtr = m_buf;
 }
 
