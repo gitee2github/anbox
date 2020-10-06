@@ -450,6 +450,7 @@ static bool setGpsSvInfo(const char *const info[]) {
             ALOGE("malloc tempLink->gpsSvString fail, error = %s\n", strerror(errno));
 	    if (tempLink != NULL) {
 	        free(tempLink);
+		tempLink = NULL;
 	    }
             goto Fail3;
         }

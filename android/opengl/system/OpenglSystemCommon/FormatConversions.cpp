@@ -101,8 +101,8 @@ void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int 
             yv12_y[i] = clamp_rgb((77 * R + 150 * G + 29 * B) >> 8);
             bool ieven = (i & 1) == 0;
             if (jeven && ieven) {
-                yv12_u[i/2] = clamp_rgb(((-43 * R - 85 * G + 128 * B) >> 8) + 128);
-                yv12_v[i/2] = clamp_rgb(((128 * R - 107 * G - 21 * B) >> 8) + 128);
+                yv12_u[i / 2] = clamp_rgb(((-43 * R - 85 * G + 128 * B) >> 8) + 128);
+                yv12_v[i / 2] = clamp_rgb(((128 * R - 107 * G - 21 * B) >> 8) + 128);
             }
         }
     }
@@ -142,8 +142,8 @@ void rgb888_to_yv12(char *dest, char *src, int width, int height, int left, int 
             yv12_y[i] = clamp_rgb((77 * R + 150 * G + 29 * B) >> 8);
             bool ieven = (i & 1) == 0;
             if (jeven && ieven) {
-                yv12_u[i/2] = clamp_rgb(((-43 * R - 85 * G + 128 * B) >> 8) + 128);
-                yv12_v[i/2] = clamp_rgb(((128 * R - 107 * G - 21 * B) >> 8) + 128);
+                yv12_u[i / 2] = clamp_rgb(((-43 * R - 85 * G + 128 * B) >> 8) + 128);
+                yv12_v[i / 2] = clamp_rgb(((128 * R - 107 * G - 21 * B) >> 8) + 128);
             }
         }
     }
