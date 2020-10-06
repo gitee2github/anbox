@@ -199,7 +199,7 @@ void Platform::create_ime_socket() {
     close(ime_socket);
     return;
   }
-  strncpy(socket_addr.sun_path, ime_socket_file_.c_str(), sizeof(socket_addr.sun_path));
+  strncpy(socket_addr.sun_path, ime_socket_file_.c_str(), sizeof(socket_addr.sun_path) - 1);
   if (unlink(ime_socket_file_.c_str()) < 0) {
     WARNING("unlink failed!");
   }
