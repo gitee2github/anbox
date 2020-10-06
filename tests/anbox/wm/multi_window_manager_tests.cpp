@@ -58,10 +58,12 @@ bool InList(SDL_Event event, vector<SDL_Event>& eventList) {
   for (auto ele = eventList.begin(); ele != eventList.end(); ) {
     auto manager_param2 = (platform::manager_window_param*)(ele->user.data1);
     if (event.user.code == ele->user.code &&
+          manager_param && manager_param2 &&
           manager_param->taskId == manager_param2->taskId &&
           manager_param->rect == manager_param2->rect &&
           manager_param->title == manager_param2->title) {
       delete manager_param2;
+      manager_param2 = nullptr;
       eventList.erase(ele);
       return true;
     }
@@ -88,7 +90,10 @@ void TestUpdateWindow(vector<SDL_Event>& eventList) {
     if (SDL_WaitEventTimeout(&event, 100) > 0) {
       if (event.type == user_window_event) {
         EXPECT_TRUE(InList(event, eventList));
-        delete (platform::manager_window_param*)(event.user.data1);
+        if (event.user.data1) {
+          delete (platform::manager_window_param*)(event.user.data1);
+          event.user.data1 = nullptr;
+        }
       }
     }
   }

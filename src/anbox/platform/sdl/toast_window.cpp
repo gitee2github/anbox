@@ -6,7 +6,8 @@ namespace platform {
 namespace sdl {
 
 ToastWindow::ToastWindow(const std::shared_ptr<Renderer> &renderer, const graphics::Rect &frame)
-    : wm::Window(renderer, 0, frame, "toast") {
+    : wm::Window(renderer, 0, frame, "toast"),
+    native_display_(0) {
   window_ = SDL_CreateWindow("toast", frame.left(), frame.top(), frame.width(), frame.height(),
                              SDL_WINDOW_BORDERLESS | SDL_WINDOW_TOOLTIP);
   if (!window_) {
