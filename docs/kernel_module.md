@@ -3,6 +3,7 @@
 Install binder and ashmem  with the following command:
 
 ```
+$ cd /home/compile
 $ git clone https://github.com/anbox/anbox-modules
 $ cd anbox-modules
 $ git reset --hard 816dd4d6e702cf77a44cfe208659af6c39e02b57
