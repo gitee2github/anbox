@@ -150,7 +150,12 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
   } else {
     SDL_SetWindowMinimumSize(window_, MINI_WIDTH, MINI_HEIGHT);
   }
-  SDL_ShowWindow(window_);
+
+  if (window_) {
+    SDL_ShowWindow(window_);
+  } else {
+    ERROR("window null point!");
+  }
 }
 
 Window::~Window() {}
