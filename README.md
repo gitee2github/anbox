@@ -111,14 +111,19 @@ $ sudo apt install gcc libncurses-dev bison flex libssl-dev cmake dkms build-ess
 
 ### Build
 
+```
+$ mkdir -p /home/compile/
+$ cd /home/compile/
+$ git clone https://gitee.com/openeuler/anbox
+```
+
  * [Apply SDL patch](docs/apply_SDL_patch.md)
  * [Install binder & ashmem module](docs/kernel_module.md)
 
 Afterwards you can build Anbox with
 
 ```
-$ git clone https://gitee.com/openeuler/anbox
-$ cd anbox
+$ cd /home/compile/anbox
 $ mkdir build
 $ cd build
 $ cmake .. -DCMAKE_CXX_FLAGS="-DENABLE_TOUCH_INPUT -Wno-error=implicit-fallthrough \
