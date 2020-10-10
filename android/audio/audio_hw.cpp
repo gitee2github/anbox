@@ -1274,12 +1274,18 @@ static ssize_t in_read(struct audio_stream_in *stream, void* buffer,
         in->pcm_config.channels == 2) {
         // Need to resample to mono
         if (in->stereo_to_mono_buf_size < bytes * 2) {
+            int16_t* backupBuf =  in->stereo_to_mono_buf;
             in->stereo_to_mono_buf = (int16_t*)realloc(in->stereo_to_mono_buf,
                                                        bytes * 2);
             if (!in->stereo_to_mono_buf) {
                 ALOGE("Failed to allocate stereo_to_mono_buff");
+                if (backupBuf != NULL) {
+                    free(backupBuf);
+                    backupBuf = NULL;
+                }
                 goto exit;
             }
+            backupBuf = NULL;
         }
 
         read_frames = audio_vbuffer_read(&in->buffer, in->stereo_to_mono_buf, frames);
