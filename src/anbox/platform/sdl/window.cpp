@@ -44,17 +44,10 @@ static const std::uint32_t HIDE_MINIMIZE = 0x02;
 static const std::uint32_t HIDE_MAXIMIZE = 0x04;
 static const std::uint32_t HIDE_CLOSE    = 0x08;
 static const std::uint32_t SHOW_ALL      = 0x00;
-static const std::uint32_t MINI_WIDTH    = 540;
-static const std::uint32_t MINI_HEIGHT   = 700;
-static const std::uint32_t WX_MINI_WIDTH = 540;
 
 const std::map<std::string, std::uint32_t> Window::property_map = {
   {"腾讯视频", SHOW_ALL},
   {"爱奇艺HD", SHOW_ALL}
-};
-
-const std::map<std::string, Window::mini_size>Window::custom_window_map = {
-  {"微信", {WX_MINI_WIDTH, MINI_HEIGHT}}
 };
 
 Window::Id Window::Invalid{ -1 };
@@ -143,12 +136,6 @@ Window::Window(const std::shared_ptr<Renderer> &renderer,
     lastClickTime = last_update_time;
   } else {
     ERROR("get system time error!");
-  }
-  auto window_size_ptr = custom_window_map.find(title);
-  if (window_size_ptr != custom_window_map.end()) {
-    SDL_SetWindowMinimumSize(window_, window_size_ptr->second.minimum_width, window_size_ptr->second.minimum_height);
-  } else {
-    SDL_SetWindowMinimumSize(window_, MINI_WIDTH, MINI_HEIGHT);
   }
 
   if (window_) {
