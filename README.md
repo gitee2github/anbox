@@ -149,7 +149,7 @@ will install the necessary bits into your system.
 
 ## Run Anbox
 
-Step1：start container manager，run the commands as the ROOT user.
+Step1：start container manager，run the commands as the ROOT user and you must have a android.img.
 
 ```
 $ bash /usr/local/bin/anbox-bridge.sh start
