@@ -49,7 +49,6 @@ class Window : public std::enable_shared_from_this<Window>, public wm::Window {
     int minimum_height;
   };
 
-  static const std::map<std::string, mini_size> custom_window_map;
   static const std::map<std::string, std::uint32_t> property_map;
 
   class Observer {
