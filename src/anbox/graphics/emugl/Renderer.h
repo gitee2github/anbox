@@ -89,8 +89,9 @@ class Renderer : public anbox::graphics::Renderer {
   virtual ~Renderer();
 
   void saveColorBuffer(ColorBufferRef* cbRef);
+  void resumeColorBuffer(ColorBufferRef* cbRef);
 
-  void eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts);
+  bool eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts);
 
   void performDelayedColorBufferCloseLocked();
 

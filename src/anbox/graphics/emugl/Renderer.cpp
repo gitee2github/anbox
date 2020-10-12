@@ -101,6 +101,18 @@ void Renderer::saveColorBuffer(ColorBufferRef* cbRef) {
     cbRef->closedTs = 0;
 }
 
+void Renderer::resumeColorBuffer(ColorBufferRef* cbRef) {
+    RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    if (eraseDelayedCloseColorBufferLocked(cbRef->cb->getHndl(), cbRef->closedTs)) {
+        cbRef->refcount++;
+        cbRef->closedTs = 0;
+        int tid = tInfo->m_tid;
+        if (tid > 0) {
+            m_procOwnedColorBuffers[tid].insert(cbRef->cb->getHndl());
+        }
+    }
+}
+
 HandleType Renderer::s_nextHandle = 0;
 
 void Renderer::finalize() {
@@ -565,7 +577,7 @@ int Renderer::openColorBuffer(HandleType p_colorbuffer) {
   return 0;
 }
 
-void Renderer::eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts) {
+bool Renderer::eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts) {
     // Find the first delayed buffer with a timestamp <= |ts|
     auto it = std::lower_bound(
                   m_colorBufferDelayedCloseList.begin(),
@@ -578,10 +590,11 @@ void Renderer::eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts) {
         // if this is the one we need - clear it out.
         if (it->cbHandle == cb) {
             it->cbHandle = 0;
-            break;
+            return true;
         }
         ++it;
     }
+    return false;
 }
 
 void Renderer::performDelayedColorBufferCloseLocked() {
@@ -589,7 +602,7 @@ void Renderer::performDelayedColorBufferCloseLocked() {
     // timestamp change (end of previous second -> beginning of a next one),
     // but not for long - this is a workaround for race conditions, and they
     // are quick.
-    static constexpr int64_t kColorBufferClosingDelayMS = 2000;
+    static constexpr int64_t kColorBufferClosingDelayMS = 10000;
 
     const auto now = getCurrentLocalTimeStamp();
     auto it = m_colorBufferDelayedCloseList.begin();
@@ -718,6 +731,7 @@ bool Renderer::setWindowSurfaceColorBuffer(HandleType p_surface,
   }
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
+  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     DEBUG("%s: bad color buffer handle %#x", __FUNCTION__, p_colorbuffer);
     // bad colorbuffer handle
@@ -740,6 +754,7 @@ void Renderer::readColorBuffer(HandleType p_colorbuffer, int x, int y,
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
+  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return;
@@ -754,6 +769,7 @@ bool Renderer::updateColorBuffer(HandleType p_colorbuffer, int x, int y,
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
+  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return false;
@@ -768,6 +784,7 @@ bool Renderer::bindColorBufferToTexture(HandleType p_colorbuffer) {
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
+  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return false;
@@ -780,6 +797,7 @@ bool Renderer::bindColorBufferToRenderbuffer(HandleType p_colorbuffer) {
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
+  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return false;
