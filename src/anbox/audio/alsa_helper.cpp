@@ -170,7 +170,6 @@ size_t AlsaHelper::pcm_read(char *readBuf, size_t length)
             count -= r;
             readBuf += r * bits_per_frame / BYTE2BITS;
         }
-        ERROR("after has read data r = %d count = %d", r, count);
     }
     return length;
 }
