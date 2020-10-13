@@ -103,7 +103,7 @@ void Renderer::saveColorBuffer(ColorBufferRef* cbRef) {
 
 void Renderer::resumeColorBuffer(ColorBufferRef* cbRef) {
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
-    if (eraseDelayedCloseColorBufferLocked(cbRef->cb->getHndl(), cbRef->closedTs)) {
+    if (cbRef->closedTs != 0 && eraseDelayedCloseColorBufferLocked(cbRef->cb->getHndl(), cbRef->closedTs)) {
         cbRef->refcount++;
         cbRef->closedTs = 0;
         int tid = tInfo->m_tid;
@@ -731,13 +731,12 @@ bool Renderer::setWindowSurfaceColorBuffer(HandleType p_surface,
   }
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
-  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     DEBUG("%s: bad color buffer handle %#x", __FUNCTION__, p_colorbuffer);
     // bad colorbuffer handle
     return false;
   }
-
+  resumeColorBuffer(&((*c).second));
   (*w).second.first->setColorBuffer((*c).second.cb);
   saveColorBuffer(&c->second);
   if (w->second.second) {
@@ -754,12 +753,11 @@ void Renderer::readColorBuffer(HandleType p_colorbuffer, int x, int y,
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
-  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return;
   }
-
+  resumeColorBuffer(&((*c).second));
   (*c).second.cb->readPixels(x, y, width, height, format, type, pixels);
 }
 
@@ -769,12 +767,11 @@ bool Renderer::updateColorBuffer(HandleType p_colorbuffer, int x, int y,
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
-  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return false;
   }
-
+  resumeColorBuffer(&((*c).second));
   (*c).second.cb->subUpdate(x, y, width, height, format, type, pixels);
 
   return true;
@@ -784,12 +781,11 @@ bool Renderer::bindColorBufferToTexture(HandleType p_colorbuffer) {
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
-  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return false;
   }
-
+  resumeColorBuffer(&((*c).second));
   return (*c).second.cb->bindToTexture();
 }
 
@@ -797,12 +793,11 @@ bool Renderer::bindColorBufferToRenderbuffer(HandleType p_colorbuffer) {
   std::unique_lock<std::mutex> l(m_lock);
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
-  resumeColorBuffer(&((*c).second));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
     return false;
   }
-
+  resumeColorBuffer(&((*c).second));
   return (*c).second.cb->bindToRenderbuffer();
 }
 
