@@ -738,11 +738,9 @@ bool Renderer::setWindowSurfaceColorBuffer(HandleType p_surface,
   }
   resumeColorBuffer(&((*c).second));
   (*w).second.first->setColorBuffer((*c).second.cb);
-  saveColorBuffer(&c->second);
   if (w->second.second) {
     closeColorBufferLocked(w->second.second);
   }
-  c->second.refcount++;
   (*w).second.second = p_colorbuffer;
   return true;
 }
