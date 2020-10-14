@@ -144,10 +144,14 @@ void AudioSink::write_data(const std::vector<std::uint8_t> &data) {
     return;
   }
   if (!connect_audio()) {
-    WARNING("Audio server not connected, skipping %d bytes", data.size());
+    ERROR("Audio server not connected, skipping %d bytes", data.size());
     return;
   }
   graphics::Buffer buffer{data.data(), data.data() + data.size()};
+  if(!queue_.can_push_locked()){
+    ERROR("AudioSink buffer queue full, skipping %d bytes", data.size());
+    return;
+  }
   queue_.push_locked(std::move(buffer), l);
 }
 } // namespace sdl
