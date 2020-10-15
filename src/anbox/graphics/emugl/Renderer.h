@@ -179,7 +179,7 @@ class Renderer : public anbox::graphics::Renderer {
   // createColorBuffer(). Note that if the reference count reaches 0,
   // the instance is destroyed automatically.
   void closeColorBuffer(HandleType p_colorbuffer);
-  void closeColorBufferLocked(HandleType p_colorbuffer);
+  void closeColorBufferLocked(HandleType p_colorbuffer, bool wannaClean = true);
 
   void cleanupProcGLObjects(int tid);
   // Equivalent for eglMakeCurrent() for the current display.

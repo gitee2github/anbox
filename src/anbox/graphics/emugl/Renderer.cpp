@@ -622,7 +622,9 @@ void Renderer::performDelayedColorBufferCloseLocked() {
         m_colorBufferDelayedCloseList.begin(), it);
 }
 
-void Renderer::closeColorBufferLocked(HandleType p_colorbuffer) {
+// Attention!!! when call this function in an iteration of any set of
+// m_procOwnedColorBuffers, you must set wannaClean to be false.
+void Renderer::closeColorBufferLocked(HandleType p_colorbuffer, , bool wannaClean) {
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // This is harmless: it is normal for guest system to issue
@@ -636,7 +638,9 @@ void Renderer::closeColorBufferLocked(HandleType p_colorbuffer) {
     m_colorBufferDelayedCloseList.push_back(
         {c->second.closedTs, p_colorbuffer});
   }
-  performDelayedColorBufferCloseLocked();
+  if (wannaClean) {
+    performDelayedColorBufferCloseLocked();
+  }
 }
 
 void Renderer::closeColorBuffer(HandleType p_colorbuffer)
@@ -666,7 +670,7 @@ void Renderer::cleanupProcGLObjects(int tid) {
         auto procIte = m_procOwnedColorBuffers.find(tid);
         if (procIte != m_procOwnedColorBuffers.end()) {
             for (auto cb: procIte->second) {
-                closeColorBufferLocked(cb);
+                closeColorBufferLocked(cb, false);
             }
             m_procOwnedColorBuffers.erase(procIte);
         }
