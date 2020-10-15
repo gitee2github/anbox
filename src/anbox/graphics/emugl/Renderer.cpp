@@ -624,7 +624,7 @@ void Renderer::performDelayedColorBufferCloseLocked() {
 
 // Attention!!! when call this function in an iteration of any set of
 // m_procOwnedColorBuffers, you must set wannaClean to be false.
-void Renderer::closeColorBufferLocked(HandleType p_colorbuffer, , bool wannaClean) {
+void Renderer::closeColorBufferLocked(HandleType p_colorbuffer, bool wannaClean) {
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // This is harmless: it is normal for guest system to issue
