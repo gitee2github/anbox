@@ -778,27 +778,27 @@ static void updateHostColorBuffer(cb_handle_t* cb,
     }
 
     if (doLocked && is_rgb_format) {
-        copy_rgb_buffer_from_unlocked(
-                to_send, pixels,
-                cb->width,
-                width, height, top, left, bpp);
+        copy_rgb_buffer_from_unlocked(to_send, pixels, cb->width,
+                                      width, height, top, left, bpp);
     }
 
     if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YV12) {
         yv12_to_rgb888(to_send, pixels,
-                        width, height, left, top,
-                        left + width - 1, top + height - 1);
+                       width, height, left, top,
+                       left + width - 1, top + height - 1);
     }
     if (cb->frameworkFormat == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         yuv420p_to_rgb888(to_send, pixels,
-                            width, height, left, top,
-                            left + width - 1, top + height - 1);
+                          width, height, left, top,
+                          left + width - 1, top + height - 1);
     }
     rcEnc->rcUpdateColorBuffer(rcEnc, cb->hostHandle,
-            left, top, width, height,
-            cb->glFormat, cb->glType, to_send);
+                               left, top, width, height,
+                               cb->glFormat, cb->glType, to_send);
     
-    if (convertedBuf) delete [] convertedBuf;
+    if (convertedBuf) {
+        delete [] convertedBuf;
+    }
 }
 
 static int gralloc_unlock(gralloc_module_t const* module,
