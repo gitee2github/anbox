@@ -51,7 +51,7 @@ class AndroidApiStub : public anbox::application::Manager {
   void resize_task(const std::int32_t &id, const anbox::graphics::Rect &rect,
                    const std::int32_t &resize_mode);
 
-  void set_platform(const std::shared_ptr<platform::BasePlatform>&base_platform);
+  void set_platform(const std::shared_ptr<platform::BasePlatform> &base_platform);
   void launch(const android::Intent &intent,
               const graphics::Rect &launch_bounds = graphics::Rect::Invalid,
               const wm::Stack::Id &stack = wm::Stack::Id::Default) override;

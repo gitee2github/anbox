@@ -227,7 +227,7 @@ void AndroidApiStub::task_resized(Request<protobuf::rpc::Void> *request) {
   resize_task_handle_.result_received();
 }
 
-void AndroidApiStub::set_platform(const std::shared_ptr<platform::BasePlatform>&base_platform) {
+void AndroidApiStub::set_platform(const std::shared_ptr<platform::BasePlatform> &base_platform) {
   platform_ = base_platform;
 }
 }  // namespace bridge
