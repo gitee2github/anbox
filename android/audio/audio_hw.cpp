@@ -1195,7 +1195,7 @@ static void *in_read_worker(void * args)
             }
         }
         pthread_mutex_unlock(&in->lock);
-        if (0 != start_audio_record(fd)) {
+        if (start_audio_record(fd) != 0) {
             ALOGE("audio start record failed");
             restart = true;
             continue;
