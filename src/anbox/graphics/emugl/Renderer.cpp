@@ -579,8 +579,7 @@ int Renderer::openColorBuffer(HandleType p_colorbuffer) {
 
 bool Renderer::eraseDelayedCloseColorBufferLocked(HandleType cb, int64_t ts) {
     // Find the first delayed buffer with a timestamp <= |ts|
-    auto it = std::lower_bound(
-                  m_colorBufferDelayedCloseList.begin(),
+    auto it = std::lower_bound(m_colorBufferDelayedCloseList.begin(),
                   m_colorBufferDelayedCloseList.end(), ts,
                   [](const ColorBufferCloseInfo& ci, int64_t ts) {
         return ci.ts < ts;
@@ -620,7 +619,7 @@ void Renderer::performDelayedColorBufferCloseLocked() {
         ++it;
     }
     m_colorBufferDelayedCloseList.erase(
-                m_colorBufferDelayedCloseList.begin(), it);
+        m_colorBufferDelayedCloseList.begin(), it);
 }
 
 void Renderer::closeColorBufferLocked(HandleType p_colorbuffer) {
