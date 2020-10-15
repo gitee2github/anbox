@@ -198,30 +198,30 @@ static int hwc_set(hwc_composer_device_1_t* dev, size_t numDisplays,
         if (string_starts_with(str, "Application Not Responding") ||
                 string_starts_with(str, "Application Error")) {
             rcEnc->rcPostLayer(rcEnc,
-                           layer->name,
-                           cb->hostHandle,
-                           layer->planeAlpha / 255,
-                           layer->sourceCrop.left + 48,
-                           layer->sourceCrop.top + 48,
-                           layer->sourceCrop.right - 48,
-                           layer->sourceCrop.bottom - 48,
-                           layer->displayFrame.left + 48,
-                           layer->displayFrame.top + 48,
-                           layer->displayFrame.right - 48,
-                           layer->displayFrame.bottom - 48);
+                    layer->name,
+                    cb->hostHandle,
+                    layer->planeAlpha / 255,
+                    layer->sourceCrop.left + 48,
+                    layer->sourceCrop.top + 48,
+                    layer->sourceCrop.right - 48,
+                    layer->sourceCrop.bottom - 48,
+                    layer->displayFrame.left + 48,
+                    layer->displayFrame.top + 48,
+                    layer->displayFrame.right - 48,
+                    layer->displayFrame.bottom - 48);
         } else {
             rcEnc->rcPostLayer(rcEnc,
-                           layer->name,
-                           cb->hostHandle,
-                           layer->planeAlpha / 255,
-                           layer->sourceCrop.left,
-                           layer->sourceCrop.top,
-                           layer->sourceCrop.right,
-                           layer->sourceCrop.bottom,
-                           layer->displayFrame.left,
-                           layer->displayFrame.top,
-                           layer->displayFrame.right,
-                           layer->displayFrame.bottom);
+                    layer->name,
+                    cb->hostHandle,
+                    layer->planeAlpha / 255,
+                    layer->sourceCrop.left,
+                    layer->sourceCrop.top,
+                    layer->sourceCrop.right,
+                    layer->sourceCrop.bottom,
+                    layer->displayFrame.left,
+                    layer->displayFrame.top,
+                    layer->displayFrame.right,
+                    layer->displayFrame.bottom);
         }
         hostCon->flush();
     }
