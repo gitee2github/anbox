@@ -48,8 +48,7 @@ bool bindFbo(GLuint* fbo, GLuint tex) {
 
     s_gles2.glGenFramebuffers(1, fbo);
     s_gles2.glBindFramebuffer(GL_FRAMEBUFFER, *fbo);
-    s_gles2.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_OES,
-                                    GL_TEXTURE_2D, tex, 0);
+    s_gles2.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, tex, 0);
     GLenum status = s_gles2.glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE_OES) {
         ERROR("FBO not complete: %#x", status);
@@ -149,7 +148,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
         return NULL;
     }
     s_gles2.glTexImage2D(GL_TEXTURE_2D, 0, texInternalFormat, p_width, p_height,
-                        0, texInternalFormat, GL_UNSIGNED_BYTE, zBuff);
+                         0, texInternalFormat, GL_UNSIGNED_BYTE, zBuff);
     ::free(zBuff);
 
     s_gles2.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -163,7 +162,7 @@ ColorBuffer* ColorBuffer::create(EGLDisplay p_display, int p_width,
     s_gles2.glGenTextures(1, &cb->m_blitTex);
     s_gles2.glBindTexture(GL_TEXTURE_2D, cb->m_blitTex);
     s_gles2.glTexImage2D(GL_TEXTURE_2D, 0, texInternalFormat, p_width, p_height,
-                        0, texInternalFormat, GL_UNSIGNED_BYTE, NULL);
+                         0, texInternalFormat, GL_UNSIGNED_BYTE, NULL);
 
     s_gles2.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     s_gles2.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -353,11 +352,9 @@ bool ColorBuffer::bindToRenderbuffer() {
         return false;
     }
     if (tInfo->currContext->isGL2()) {
-        s_gles2.glEGLImageTargetRenderbufferStorageOES(GL_RENDERBUFFER_OES,
-                                                    m_eglImage);
+        s_gles2.glEGLImageTargetRenderbufferStorageOES(GL_RENDERBUFFER_OES, m_eglImage);
     } else {
-        s_gles1.glEGLImageTargetRenderbufferStorageOES(GL_RENDERBUFFER_OES,
-                                                    m_eglImage);
+        s_gles1.glEGLImageTargetRenderbufferStorageOES(GL_RENDERBUFFER_OES, m_eglImage);
     }
     return true;
 }
@@ -368,8 +365,7 @@ void ColorBuffer::readback(unsigned char* img) {
         return;
     }
     if (bindFbo(&m_fbo, m_tex)) {
-        s_gles2.glReadPixels(0, 0, m_width, m_height, GL_RGBA, GL_UNSIGNED_BYTE,
-                            img);
+        s_gles2.glReadPixels(0, 0, m_width, m_height, GL_RGBA, GL_UNSIGNED_BYTE, img);
         unbindFbo();
     }
 }
