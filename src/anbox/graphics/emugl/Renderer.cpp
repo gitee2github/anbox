@@ -933,7 +933,7 @@ HandleType Renderer::createClientImage(HandleType context, EGLenum target,
 EGLBoolean Renderer::destroyClientImage(HandleType image) {
     if (gEGLImageMap.count(image) == 0) return false;
     EGLBoolean ret = s_egl.eglDestroyImageKHR(m_eglDisplay,
-                                  gEGLImageMap[image]);
+        gEGLImageMap[image]);
     if (!ret) return false;
     gEGLImageMap.erase(image);
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
