@@ -180,7 +180,7 @@ static void gps_state_send(char command) {
 }
 
 static void freepGpsSvInfo() {
-    GpsSvLink *tempLink;
+    GpsSvLink *tempLink = NULL;
     while (pGpsSvInfo != NULL) {
         tempLink = pGpsSvInfo;
         pGpsSvInfo = pGpsSvInfo->next;
@@ -192,7 +192,7 @@ static void freepGpsSvInfo() {
 }
 
 static void gps_state_done(GpsState *s) {
-    void *dummy;
+    void *dummy = NULL;
 
     DLOG("%s, Enter", __FUNCTION__);
     if (s->thread1) {
@@ -376,8 +376,8 @@ static float str2float(char *start, char *end) {
 }
 
 static bool getSvStatus(GpsSvStatus *status) {
-    GpsSvLink *tempLink;
-    char *p;
+    GpsSvLink *tempLink = NULL;
+    char *p = NULL;
     int count = 0;
 
     if (pGpsSvInfo == NULL) {
@@ -437,7 +437,7 @@ static bool strStartsWith(const char *buffer, const char *buff) {
 static bool setGpsSvInfo(const char *const info[]) {
     int i = 0;
     GpsSvLink *lastLink = NULL;
-    GpsSvLink *tempLink;
+    GpsSvLink *tempLink = NULL;
 
     freepGpsSvInfo();
 
@@ -572,7 +572,7 @@ static void parse_gps_cmd(const char *const cmd, NmeaReader *reader) {
             }
         } else if (strStartsWith(p2, "satellite=")) {
             char *svInfo[GPS_MAX_SVS];
-            char *p3;
+            char *p3 = NULL;
             int i = 0;
             p2 += strlen("satellite=");
             if (strlen(p2) >= 7) {        //一组卫星数据至少7个字符
