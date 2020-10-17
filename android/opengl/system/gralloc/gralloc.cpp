@@ -756,7 +756,7 @@ static void updateHostColorBuffer(cb_handle_t* cb,
     }
     
     DEFINE_HOST_CONNECTION;
-    int bpp = glUtilsPixelBitSize(cb->glFormat, cb->glType) >> 3;
+    int bpp = (uint32_t)glUtilsPixelBitSize(cb->glFormat, cb->glType) >> 3;
     int left = doLocked ? cb->lockedLeft : 0;
     int top = doLocked ? cb->lockedTop : 0;
     int width = doLocked ? cb->lockedWidth : cb->width;
