@@ -27,7 +27,7 @@
 
 void get_yv12_offsets(int width, int height, uint32_t *yStride_out, uint32_t *cStride_out, uint32_t *totalSz_out) {
     uint32_t align = 16;
-    uint32_t yStride = (width + (align - 1)) & ~(align - 1);
+    uint32_t yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     uint32_t uvStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     uint32_t uvHeight = height / 2;
     uint32_t sz = yStride * height + 2 * (uvHeight * uvStride);
@@ -45,7 +45,7 @@ void get_yv12_offsets(int width, int height, uint32_t *yStride_out, uint32_t *cS
 
 void get_yuv420p_offsets(int width, int height, uint32_t *yStride_out, uint32_t *cStride_out, uint32_t *totalSz_out) {
     uint32_t align = 1;
-    uint32_t yStride = (width + (align - 1)) & ~(align - 1);
+    uint32_t yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     uint32_t uvStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     uint32_t uvHeight = height / 2;
     uint32_t sz = yStride * height + 2 * (uvHeight * uvStride);
@@ -66,7 +66,7 @@ signed clamp_rgb(signed value) {
 
 void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
     int align = 16;
-    int yStride = (width + (align - 1)) & ~(align - 1);
+    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
@@ -111,7 +111,7 @@ void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int 
 void rgb888_to_yv12(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
     DD("%s convert %d by %d", __func__, width, height);
     int align = 16;
-    int yStride = (width + (align - 1)) & ~(align - 1);
+    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
@@ -172,7 +172,7 @@ void rgb888_to_yuv420p(char *dest, char *src, int width, int height, int left, i
         uint8_t *yv12_u = yv12_u0 + (j / 2) * cStride;
         uint8_t *yv12_v = yv12_u + cStride;
         uint8_t *rgb_ptr = rgb_ptr0 + j * width * rgb_stride;
-        bool jeven = (j & 1) == 0;
+        bool jeven = ((uint32_t)j & 1) == 0;
         for (int i = left; i <= right; ++i) {
             uint8_t R = rgb_ptr[i * rgb_stride];
             uint8_t G = rgb_ptr[i * rgb_stride + 1];
@@ -194,7 +194,7 @@ void rgb888_to_yuv420p(char *dest, char *src, int width, int height, int left, i
 void yv12_to_rgb565(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
     DD("%s convert %d by %d", __func__, width, height);
     int align = 16;
-    int yStride = (width + (align - 1)) & ~(align - 1);
+    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
@@ -243,7 +243,7 @@ void yv12_to_rgb565(char *dest, char *src, int width, int height, int left, int 
 void yv12_to_rgb888(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
     DD("%s convert %d by %d", __func__, width, height);
     int align = 16;
-    int yStride = (width + (align - 1)) & ~(align - 1);
+    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
