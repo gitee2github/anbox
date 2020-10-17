@@ -103,6 +103,9 @@ void Renderer::saveColorBuffer(ColorBufferRef* cbRef) {
 
 void Renderer::resumeColorBuffer(ColorBufferRef* cbRef) {
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
+    if (!tInfo) {
+        return;
+    }
     if (cbRef->closedTs != 0 && eraseDelayedCloseColorBufferLocked(cbRef->cb->getHndl(), cbRef->closedTs)) {
         cbRef->refcount++;
         cbRef->closedTs = 0;
