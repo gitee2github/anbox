@@ -463,13 +463,13 @@ static const char *getGLString(int glEnum)
     char *hostStr = NULL;
     if (!rcEnc) {
         ALOGE("rcEnc is null");
-        return nullptr;
+        return NULL;
     }
     int n = rcEnc->rcGetGLString(rcEnc, glEnum, NULL, 0);
     if (n < 0) {
         hostStr = new char[-n+1];
         if (!hostStr) {
-            return nullptr;
+            return NULL;
         }
         n = rcEnc->rcGetGLString(rcEnc, glEnum, hostStr, -n);
         if (n <= 0) {
@@ -542,7 +542,7 @@ __eglMustCastToProperFunctionPointerType eglGetProcAddress(const char *procname)
 
     if (!procname) {
         ALOGE("procname is null");
-        return nullptr;
+        return NULL;
     }
 
     // search in EGL function table
