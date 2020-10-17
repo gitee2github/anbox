@@ -51,9 +51,8 @@ bool LoopDevice::attach_file(const boost::filesystem::path &file_path) {
   if (fd_ < 0)
     return false;
 
-  const char* untrustPath = file_path.c_str();
   char path[PATH_MAX] = {0};
-  if (realpath(untrustPath, path) == NULL) {
+  if (realpath(file_path.c_str(), path) == NULL) {
     return false;
   }
 
