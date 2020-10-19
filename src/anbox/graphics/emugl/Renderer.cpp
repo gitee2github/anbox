@@ -107,7 +107,7 @@ void Renderer::resumeColorBuffer(ColorBufferRef* cbRef) {
         return;
     }
     if (cbRef->closedTs != 0 && eraseDelayedCloseColorBufferLocked(cbRef->cb->getHndl(), cbRef->closedTs)) {
-        cbRef->refcount++;
+        cbRef->refcount = 1;
         cbRef->closedTs = 0;
         int tid = tInfo->m_tid;
         if (tid > 0) {
@@ -636,7 +636,7 @@ void Renderer::closeColorBufferLocked(HandleType p_colorbuffer, bool wannaClean)
     // to give guest a notice yet)
     return;
   }
-  if (--(*c).second.refcount == 0) {
+  if ((*c).second.refcount > 0 && --(*c).second.refcount == 0) {
     c->second.closedTs = getCurrentLocalTimeStamp();
     m_colorBufferDelayedCloseList.push_back(
         {c->second.closedTs, p_colorbuffer});
