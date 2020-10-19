@@ -65,8 +65,8 @@ signed clamp_rgb(signed value) {
 }
 
 void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
-    int align = 16;
-    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
+    uint32_t align = 16;
+    uint32_t yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
@@ -86,7 +86,7 @@ void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int 
         uint8_t *yv12_v = yv12_v0 + (j / 2) * cStride;
         uint8_t *yv12_u = yv12_v + cSize;
         uint16_t *rgb_ptr = rgb_ptr0 + j * width;
-        bool jeven = (j & 1) == 0;
+        bool jeven = ((uint32_t)j & 1) == 0;
         for (int i = left; i <= right; ++i) {
             uint8_t r = ((rgb_ptr[i]) >> 11) & 0x01f;
             uint8_t g = ((rgb_ptr[i]) >> 5) & 0x03f;
@@ -99,7 +99,7 @@ void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int 
             // convert to YV12
             // frameworks/base/core/jni/android_hardware_camera2_legacy_LegacyCameraDevice.cpp
             yv12_y[i] = clamp_rgb((77 * R + 150 * G + 29 * B) >> 8);
-            bool ieven = (i & 1) == 0;
+            bool ieven = ((uint32_t)i & 1) == 0;
             if (jeven && ieven) {
                 yv12_u[i / 2] = clamp_rgb(((-43 * R - 85 * G + 128 * B) >> 8) + 128);
                 yv12_v[i / 2] = clamp_rgb(((128 * R - 107 * G - 21 * B) >> 8) + 128);
@@ -110,8 +110,8 @@ void rgb565_to_yv12(char *dest, char *src, int width, int height, int left, int 
 
 void rgb888_to_yv12(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
     DD("%s convert %d by %d", __func__, width, height);
-    int align = 16;
-    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
+    uint32_t align = 16;
+    uint32_t yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
@@ -132,7 +132,7 @@ void rgb888_to_yv12(char *dest, char *src, int width, int height, int left, int 
         uint8_t *yv12_v = yv12_v0 + (j / 2) * cStride;
         uint8_t *yv12_u = yv12_v + cSize;
         uint8_t *rgb_ptr = rgb_ptr0 + j * width * rgb_stride;
-        bool jeven = (j & 1) == 0;
+        bool jeven = ((uint32_t)j & 1) == 0;
         for (int i = left; i <= right; ++i) {
             uint8_t R = rgb_ptr[i * rgb_stride];
             uint8_t G = rgb_ptr[i * rgb_stride + 1];
@@ -140,7 +140,7 @@ void rgb888_to_yv12(char *dest, char *src, int width, int height, int left, int 
             // convert to YV12
             // frameworks/base/core/jni/android_hardware_camera2_legacy_LegacyCameraDevice.cpp
             yv12_y[i] = clamp_rgb((77 * R + 150 * G + 29 * B) >> 8);
-            bool ieven = (i & 1) == 0;
+            bool ieven = ((uint32_t)i & 1) == 0;
             if (jeven && ieven) {
                 yv12_u[i / 2] = clamp_rgb(((-43 * R - 85 * G + 128 * B) >> 8) + 128);
                 yv12_v[i / 2] = clamp_rgb(((128 * R - 107 * G - 21 * B) >> 8) + 128);
@@ -180,7 +180,7 @@ void rgb888_to_yuv420p(char *dest, char *src, int width, int height, int left, i
             // convert to YV12
             // frameworks/base/core/jni/android_hardware_camera2_legacy_LegacyCameraDevice.cpp
             yv12_y[i] = clamp_rgb((77 * R + 150 * G + 29 * B) >> 8);
-            bool ieven = (i & 1) == 0;
+            bool ieven = ((uint32_t)i & 1) == 0;
             if (jeven && ieven) {
                 yv12_u[i] = clamp_rgb(((-43 * R - 85 * G + 128 * B) >> 8) + 128);
                 yv12_v[i] = clamp_rgb(((128 * R - 107 * G - 21 * B) >> 8) + 128);
@@ -193,8 +193,8 @@ void rgb888_to_yuv420p(char *dest, char *src, int width, int height, int left, i
 // certain stride requirements for Y and UV respectively.
 void yv12_to_rgb565(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
     DD("%s convert %d by %d", __func__, width, height);
-    int align = 16;
-    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
+    uint32_t align = 16;
+    uint32_t yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
@@ -242,8 +242,8 @@ void yv12_to_rgb565(char *dest, char *src, int width, int height, int left, int 
 // certain stride requirements for Y and UV respectively.
 void yv12_to_rgb888(char *dest, char *src, int width, int height, int left, int top, int right, int bottom) {
     DD("%s convert %d by %d", __func__, width, height);
-    int align = 16;
-    int yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
+    uint32_t align = 16;
+    uint32_t yStride = ((uint32_t)width + (align - 1)) & ~(align - 1);
     int cStride = (yStride / 2 + (align - 1)) & ~(align - 1);
     int yOffset = 0;
     int cSize = cStride * height / 2;
