@@ -8,3 +8,4 @@
  * [anbox-v1.0-rc6.release-notes](./anbox-v1.0-rc6.release-notes.md)
  * [anbox-v1.0-rc7.release-notes](./anbox-v1.0-rc7.release-notes.md)
  * [anbox-v1.0-rc8.release-notes](./anbox-v1.0-rc8.release-notes.md)
+ * [anbox-v1.0-rc9.release-notes](./anbox-v1.0-rc9.release-notes.md)
