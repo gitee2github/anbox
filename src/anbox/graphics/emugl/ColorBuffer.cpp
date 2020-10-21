@@ -224,6 +224,8 @@ ColorBuffer::~ColorBuffer() {
     s_gles2.glDeleteTextures(2, tex);
 
     delete m_resizer;
+    delete m_helper;
+    delete m_display;
 }
 
 HandleType ColorBuffer::getHndl() const {
