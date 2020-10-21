@@ -40,6 +40,7 @@ AudioSink::~AudioSink() {
   mThreadExit = true;
   if (t != NULL) {
     free(t);
+    t = NULL;
   }
   queue_.close_locked();
   disconnect_audio();
