@@ -408,7 +408,7 @@ HandleType Renderer::createColorBuffer(int p_width, int p_height,
 
     RenderThreadInfo *tInfo = RenderThreadInfo::get();
     if (!tInfo) {
-        return -1;
+        return 0;
     }
     int tid = tInfo->m_tid;
     if (tid > 0) {
@@ -447,7 +447,7 @@ HandleType Renderer::createRenderContext(int p_config, HandleType p_share,
     m_contexts[ret] = rctx;
     RenderThreadInfo *tinfo = RenderThreadInfo::get();
     if (!tinfo) {
-      return -1;
+        return 0;
     }
     int tid = tinfo->m_tid;
     // The new emulator manages render contexts per guest process.
