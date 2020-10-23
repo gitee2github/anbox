@@ -389,7 +389,8 @@ HandleType Renderer::genHandle() {
   do {
     id = ++s_nextHandle;
   } while (id == 0 || m_contexts.find(id) != m_contexts.end() ||
-           m_windows.find(id) != m_windows.end());
+           m_windows.find(id) != m_windows.end() || 
+           m_colorbuffers.find(id) != m_colorbuffers.end());
 
   return id;
 }
@@ -568,7 +569,7 @@ int Renderer::openColorBuffer(HandleType p_colorbuffer) {
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
-    ERROR("FB: openColorBuffer cb handle %#x not found", p_colorbuffer);
+    ERROR("%s: ColorBuffer handle %u not found", __FUNCTION__, p_colorbuffer);
     return -1;
   }
   (*c).second.refcount++;
@@ -738,11 +739,12 @@ bool Renderer::setWindowSurfaceColorBuffer(HandleType p_surface,
 
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
-    DEBUG("%s: bad color buffer handle %#x", __FUNCTION__, p_colorbuffer);
+    ERROR("%s: ColorBuffer handle %u not found", __FUNCTION__, p_colorbuffer);
     // bad colorbuffer handle
     return false;
   }
-  resumeColorBuffer(&((*c).second));
+  saveColorBuffer(&c->second);
+  c->second.refcount++;
   (*w).second.first->setColorBuffer((*c).second.cb);
   if (w->second.second) {
     closeColorBufferLocked(w->second.second);
@@ -759,6 +761,7 @@ void Renderer::readColorBuffer(HandleType p_colorbuffer, int x, int y,
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
+    ERROR("%s: ColorBuffer handle %u not found", __FUNCTION__, p_colorbuffer);
     return;
   }
   resumeColorBuffer(&((*c).second));
@@ -773,6 +776,7 @@ bool Renderer::updateColorBuffer(HandleType p_colorbuffer, int x, int y,
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
+    ERROR("%s: ColorBuffer handle %u not found", __FUNCTION__, p_colorbuffer);
     return false;
   }
   resumeColorBuffer(&((*c).second));
@@ -787,6 +791,7 @@ bool Renderer::bindColorBufferToTexture(HandleType p_colorbuffer) {
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
+    ERROR("%s: ColorBuffer handle %u not found", __FUNCTION__, p_colorbuffer);
     return false;
   }
   resumeColorBuffer(&((*c).second));
@@ -799,6 +804,7 @@ bool Renderer::bindColorBufferToRenderbuffer(HandleType p_colorbuffer) {
   ColorBufferMap::iterator c(m_colorbuffers.find(p_colorbuffer));
   if (c == m_colorbuffers.end()) {
     // bad colorbuffer handle
+    ERROR("%s: ColorBuffer handle %u not found", __FUNCTION__, p_colorbuffer);
     return false;
   }
   resumeColorBuffer(&((*c).second));
