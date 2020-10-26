@@ -131,7 +131,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -fPIC")
 
 if (NOT ANBOX_VERSION)
     exec_program("git" ${CMAKE_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_COMMIT_HASH)
-    set(ANBOX_VERSION "v1.0-rc9")
+    set(ANBOX_VERSION "v1.0-rc10")
     message( STATUS  "============================================>>> ANBOX_VERSION: ${ANBOX_VERSION}")
 endif()
 if (ANBOX_VERSION_SUFFIX)
