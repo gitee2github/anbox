@@ -58,7 +58,7 @@ add_library(anbox-protobuf
     anbox/protobuf/anbox_container.proto
     anbox/protobuf/google_protobuf_guard.cpp)
 
-if(CMAKE_OSX_ARCHITECTURES MATCHES "x86_64")
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
     target_link_libraries(anbox-protobuf
     ${PROTOBUF_LITE_LIBRARIES}
     /usr/lib/x86_64-linux-gnu/libasound.so
