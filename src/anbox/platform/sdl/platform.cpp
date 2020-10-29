@@ -149,6 +149,7 @@ Platform::~Platform() {
   if (ime_socket_ != -1) {
     close(ime_socket_);
   }
+  monitor_exit = false;
 }
 
 void Platform::set_renderer(const std::shared_ptr<Renderer> &renderer) {
@@ -226,9 +227,35 @@ void Platform::create_ime_socket() {
   }
   ime_fd_ = client_socket;
   ime_socket_ = ime_socket;
+
+  recover_container(ime_fd_);
+
   DEBUG("accept ime socket successful");
 }
 // Added for Chinese input anbox end
+
+void Platform::recover_container(int monitor_socket)
+{
+
+  std::thread t([this, monitor_socket](){
+    char ch = 0;
+    this->monitor_exit = true;
+    while(this->monitor_exit) {
+      ssize_t ret = recv(monitor_socket, &ch, sizeof(char), 0);
+      /*<from recv man 3>:the peer has performed and orderly shutdown, recv() shall return 0.
+      *the peer is InputMethodManagerService in Android, and be stationed in process system_server.
+      *normally, this socket is only used to send data to Android.
+      *Android never send anything back, so if recv return anything back and ret is zero, system_server is dead.
+      *if system_server is dead, we should restart the whole container to avoid error spreads
+      */
+      if(ret == 0) {
+        ERROR("system_server is dead, GOODBYE!");
+        exit(0);
+      }
+    }
+  });
+  t.detach();
+}
 
 void Platform::process_events() {
   event_thread_running_ = true;
