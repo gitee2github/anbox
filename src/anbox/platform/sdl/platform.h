@@ -87,6 +87,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   bool mbd_event_fliter(const SDL_Event &event);
   SDL_Scancode removeKPPropertyIfNeeded(const SDL_Scancode &scan_code);
   void sync_mod_state();
+  void recover_container(int monitor_socket);
 
   bool adjust_coordinates(std::int32_t &x, std::int32_t &y);
   bool adjust_coordinates(SDL_Window *window, std::int32_t &x, std::int32_t &y);
@@ -115,6 +116,7 @@ class Platform : public std::enable_shared_from_this<Platform>,
   std::uint32_t focused_sdl_window_id_ = 0;
   Configuration config_;
   std::string ime_socket_file_;
+  bool monitor_exit = false;
 
   static const int MAX_FINGERS = 10;
   static const int MAX_TRACKING_ID = 10;
