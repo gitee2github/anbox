@@ -40,6 +40,7 @@ LauncherStorage::LauncherStorage(const fs::path &path) :
     invisible_pkg_.insert("com-android-deskclock");
     invisible_pkg_.insert("com-android-email");
     invisible_pkg_.insert("com-android-music");
+    invisible_pkg_.insert("com-android-settings");
 }
 
 LauncherStorage::~LauncherStorage() {
