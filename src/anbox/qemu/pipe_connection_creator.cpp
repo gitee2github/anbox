@@ -101,7 +101,7 @@ PipeConnectionCreator::client_type PipeConnectionCreator::identify_client(
   for (;;) {
     unsigned char byte[1] = {0};
     const auto err = messenger->receive_msg(ba::buffer(byte, 1));
-    if (err) break;
+    if (err) return client_type::invalid;
     buffer.push_back(byte[0]);
     if (byte[0] == 0x0) break;
   }
