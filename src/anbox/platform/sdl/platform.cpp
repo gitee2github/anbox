@@ -249,6 +249,7 @@ void Platform::recover_container(int monitor_socket)
       *if system_server is dead, we should restart the whole container to avoid error spreads
       */
       if(ret == 0) {
+        usleep(1000*1000);
         ERROR("system_server is dead, GOODBYE!");
         exit(0);
       }
