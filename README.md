@@ -1,4 +1,5 @@
 # Anbox
+仓库状态设置为关闭的原因: https://gitee.com/openeuler/community/pulls/3095
 
 This code repository is forked from https://github.com/anbox/anbox and 
 will be maintained under openEuler android middleware community.We aim 
